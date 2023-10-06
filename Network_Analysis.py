@@ -10,6 +10,9 @@ from network_diagram import extract_corr_matrix
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import bisect 
+
+
 
 def heaviside(array: np.ndarray):
   '''
@@ -52,6 +55,18 @@ def active_stations(time: datetime):
     
     data = pd.read_feather(data_path)
     
+    #Get the closest time index of interest
+    index = bisect.bisect_left(data['Date_UTC'],time)
+    
+    #Get the value of one of the magnetic field data
+    value = data['dbz_geo'][index]
+    
+    #check to see value isn't nan and increase N_stations by 1
+    if value:
+      N_stations =+1
+    
+  return N_stations
+    
     
   
 def deg_connection(adj_matrix: list, global_threshold: int, date_str: str) -> int:
@@ -66,7 +81,7 @@ def deg_connection(adj_matrix: list, global_threshold: int, date_str: str) -> in
     
     N = active_stations(time)
     
-    for j in range(1,N+1,1)
+    
     
 
 def Adjacent_matrix(correlation_result: list, date_str: str,global_threshold: int, steps: int = 5):

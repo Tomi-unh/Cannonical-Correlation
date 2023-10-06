@@ -67,7 +67,21 @@ def data_cleanup(data1: pd.DataFrame, data2: pd.DataFrame, strategy: str = 'mean
 #        cleaned_data = pd.DataFrame(imputer.fit_transform(data1), columns = data1.columns, index = data1.index)
 #        
 #        return cleaned_data
+    
+  
+  
+  
+def data_generator(data, chunk_size):
+  '''
+  This function helps with data 
+  '''
+  
+  for i in range(0, len(data), chunk_size):
+    yield data[i:i + chunk_size]
+    
+    
 
+  
 def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int = 128, step: int = 5) -> list:
     """
     This function takes in two different DataFrames of magnetometer stations, detrends the two Datasets and performs
@@ -108,6 +122,8 @@ def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int 
         coeff_list.append(coeff)
         
     return coeff_list
+  
+  
     
 def corr_matrix(args):
     '''
@@ -149,6 +165,8 @@ def corr_matrix(args):
     del primary, secondary  # Delete processed data
     
     return corr_const
+  
+  
 
 def save_data(data, filename):
   '''
@@ -169,7 +187,7 @@ def save_data(data, filename):
 
 def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save_interval: int = 3600,
                              num_processes: int = 10, save_path: str = '../TWINS/CCA/',
-                             filename: str = 'Month_Long_CCA.pickle') -> np.ndarray:
+                             filename: str = 'Month_Long_CCA.pickle', chunk: int = 100000):
     """
     Imports feather files with the saved magnetometer station datasets. The data is loaded and put through 
     the windowed_correlation function and the correlation coefficients are extracted. These are store in 
@@ -193,7 +211,9 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save
     
     start_time_to_timestamp = pd.to_datetime(start_day, format='%Y%m%d')
 
-
+    #Set the path name 
+    
+    File_SavePath = os.path.join(save_path, filename)
     print('Starting Canonical Correlation Analysis...')
     
     '''
@@ -206,10 +226,16 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save
         for i, main_station in enumerate(station_list):
             for j, compare_station in enumerate(station_list):
                 args_list.append((main_station, compare_station, path, start_time_to_timestamp, days_to_min))
+        
+        
+        for chunk in data_generator(args_list,chunk_size = chunk):
+          results = list(tqdm(pool.imap(corr_matrix, chunk), total=len(chunk), desc='Processing Item'))
+          
+          save_data(results, File_SavePath)
+          
+          del results
 
-        results = list(tqdm(pool.imap(corr_matrix, args_list), total=len(args_list), desc='Processing Item'))
-
-    return results
+#    return results
 
 
 
@@ -232,17 +258,19 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
         None.
     
     """
+    corr_matrix_parallelizer(Path, Date)
+#    Data = corr_matrix_parallelizer(Path, Date)
+#    File_SavePath = os.path.join(save_path, file_name)
     
-    Data = corr_matrix_parallelizer(Path, Date)
-    File_SavePath = os.path.join(save_path, file_name)
-
-    save_data(Data, File_SavePath)
+#    for data in data_generator(Data,10000):
+#
+#      save_data(data, File_SavePath)
 
 
 if __name__ == '__main__':
     print('This script is being run as the main program...')
-    main('20120101', 'Month_Long_CCA.pickle')
-#    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120708', Duration=28, save_interval=43200, num_processes=10)
+#    main('20120101', 'Month_Long_CCA.pkl')
+    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120101')
     
 
     
