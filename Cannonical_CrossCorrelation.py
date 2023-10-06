@@ -150,29 +150,6 @@ def corr_matrix(args):
     
     return corr_const
 
-
-#def worker_function(result_queue, save_interval, save_path, file_name):
-#    last_save_time = time.time()
-#    partial_results = []
-#    
-#    while True:
-#        try:
-#            result = result_queue.get(timeout=1)  # Get partial result from the queue
-#            partial_results.append(result)
-#
-#            if time.time() - last_save_time >= save_interval:
-#                # Save partial results to a file
-#                save_data(partial_results, os.path.join(save_path, file_name))
-#                last_save_time = time.time()
-#                partial_results = []  # Reset the partial results
-#
-#        except queue.Empty:
-#            if time.time() - last_save_time >= save_interval and partial_results:
-#                # Save any remaining partial results
-#                save_data(partial_results, os.path.join(save_path, file_name))
-#                last_save_time = time.time()
-#                partial_results = []  # Reset the partial results
-
 def save_data(data, filename):
   '''
   This function saves data into a pickle file.
@@ -222,10 +199,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save
     '''
     Parallelize the function. 
     '''
-#    result_queue = Queue()
-#    
-#    save_process = Process(target=worker_function, args=(result_queue, save_interval, save_path, filename))
-#    save_process.start()
+
     
     with Pool(processes = 10) as pool:
         args_list = []
@@ -234,22 +208,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save
                 args_list.append((main_station, compare_station, path, start_time_to_timestamp, days_to_min))
 
         results = list(tqdm(pool.imap(corr_matrix, args_list), total=len(args_list), desc='Processing Item'))
-#          result_queue.put(result)  # Put the result in the queue for saving
-#          
-#    result_queue.put(None)
-#    save_process.join()
-#        
-    '''
-    Store the result into a matrix.
-    '''
-#    for i, corr_const in enumerate(results):
-#        station_pair_index = i // n
-#        i_index = i % n
-#        j_index = i_index // n
-#
-#        correlation_matrix[station_pair_index, i_index, j_index] = corr_const
 
-#    return correlation_matrix
     return results
 
 
@@ -282,7 +241,7 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
 
 if __name__ == '__main__':
     print('This script is being run as the main program...')
-    main('20120708', 'Month_Long_CCA.pickle')
+    main('20120101', 'Month_Long_CCA.pickle')
 #    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120708', Duration=28, save_interval=43200, num_processes=10)
     
 

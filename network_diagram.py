@@ -16,10 +16,11 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
-def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stations: int = 494) -> dict:
+def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stations: int = 494, steps: int = 1) -> dict:
     '''
     Get the correlation matrices from the results of the CCA and store these matrices into a dictionary.
     The key for the matrices are the timestep for each individual matrix. E.g, time t, t+1, t+2...
+    Where time t is the beginning of the CCA analysis. 
     
     Parameters:
         ----------
@@ -29,18 +30,24 @@ def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stati
         datetime: Date and time of the event. This is of the format 'yyyymmdd-hhmm', where the hhmm is the start
         hour and minute of the CCA analysis.
         number_of_stations: The number of stations being used for the CCA analysis. It's set to a default of 494.
+        steps: The step between the first CCA analysis and the next one. Defaults to 1 for a normal rolling window.
+        
         
         Returns:
         -------
         correlation_matrix: This is a dictionary of correlation matrices. Each one of these matrices corresponds 
         to a specific time step, with the appropriate label used as the key.
     '''
+    
     datetime = datetime # Replace with your date string
     datetime_object = dt.datetime.strptime(datetime, '%Y%m%d-%H%M')
     
     n = number_of_stations
     
-    length_of_result = len(max(correlation_result)) #Get the length of the timesteps for the correlation matrix. 
+    
+    #Get the length of the timesteps for the correlation matrix. 
+    #This is done by taking the length longest sublist in the main list.
+    length_of_result = len(max(correlation_result)) 
     
     corr_matrix = {}
     
