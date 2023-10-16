@@ -7,6 +7,7 @@ Created on Thu May 18 19:32:30 2023
 
 import pandas as pd
 import numpy as np
+import json
 from sklearn.cross_decomposition import CCA
 from scipy.signal import detrend
 import os
@@ -187,7 +188,7 @@ def save_data(data, filename):
 
 def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save_interval: int = 3600,
                              num_processes: int = 10, save_path: str = '../TWINS/CCA/',
-                             filename: str = 'Month_Long_CCA.pickle', chunk: int = 100000):
+                             filename: str = '_CCA.pickle', chunk: int = 10000):
     """
     Imports feather files with the saved magnetometer station datasets. The data is loaded and put through 
     the windowed_correlation function and the correlation coefficients are extracted. These are store in 
@@ -228,18 +229,99 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save
                 args_list.append((main_station, compare_station, path, start_time_to_timestamp, days_to_min))
         
         
+        a = 0
         for chunk in data_generator(args_list,chunk_size = chunk):
           results = list(tqdm(pool.imap(corr_matrix, chunk), total=len(chunk), desc='Processing Item'))
           
-          save_data(results, File_SavePath)
+#          save_data(results, File_SavePath)
+          
+          #Define the filename and path to save to. 
+          File_SavePath = os.path.join(save_path, f'Chunk_{a}_{filename}')
+          
+          
+          with open(File_SavePath, 'wb') as pickle_file:
+              pickle.dump(results, pickle_file)
           
           del results
-
+          
+          a+=1
 #    return results
 
 
+def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_', 
+                   path: str = '../TWINS/CCA/', ext: str = '.pickle',
+                   remove_path: bool = False):
+  
+  """
+  Combines and sorts pickle files with a specific target phrase in their names into a single pickle file
+  and deletes the original pickle files.
+  
+  Parameters:
+    ----------
+  -save_name: Name of the file to be saved. Defaults to combined_pickle.pkl
+  -path: The directory where the pickle files are located.
+  -target_phrase: The specific phrase to look for in file names.
+  -remove_path: Argument that specifies if the files should be removed after combination
+                leaving only the combined file intact. Default is False. 
+  
+  Returns:
+    --------
+  -str: The path to the combined and sorted pickle file.
+  """
+  
+  # Create a list to hold the paths of the pickle files
+  pickle_files = []
+  
+  # Iterate over the pickle files in the directory and store their paths
+  for filename in os.listdir(path):
+      if filename.endswith(ext) and target_phrase in filename:
+          full_path = os.path.join(path, filename)
+          pickle_files.append(full_path)
+  
+  # Write the combined and sorted data to a single pickle file
+  combined_data = []
+  
+  
+  if save_name: 
+    combined_filename = save_name
+  else: 
+    combined_filename = 'combined_sorted.json'
+    
+    
+  #Def the file path
+  combined_file_path = os.path.join(path, combined_filename)
+  
+  # Sort the list of pickle file paths
+  pickle_files.sort()
+  
+  print(f'Got the {ext} files...')
+  # Read and combine the data from the sorted pickle files
+  for full_path in tqdm(pickle_files, total = len(pickle_files), desc = f'Saving {ext} files'):
+      with open(full_path, 'rb') as file:
+          data = pickle.load(file)
+          
+          combined_data.extend(data)
+          
+          del data
+      # Delete the original pickle file if specified
+      if remove_path: os.remove(full_path)      
+  
+  with open(combined_file_path, 'w') as combined_file:
+      json.dump(combined_data, combined_file)
+          
 
-        
+
+
+      
+
+
+  
+  return_msg = f'Sucessfully Saved {combined_filename} to path: {combined_file_path}'
+  
+  print(return_msg)
+  
+  return combined_file_path
+          
         
 def main(Date: str, file_name: str,Path: str = '../data/SuperMag/', 
   save_path: str = '../TWINS/CCA/', save_interval: int = 3600):
@@ -259,6 +341,8 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
     
     """
     corr_matrix_parallelizer(Path, Date)
+    
+    combine_pickle(save_name = file_name)
 #    Data = corr_matrix_parallelizer(Path, Date)
 #    File_SavePath = os.path.join(save_path, file_name)
     
@@ -269,8 +353,8 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
 
 if __name__ == '__main__':
     print('This script is being run as the main program...')
-#    main('20120101', 'Month_Long_CCA.pkl')
-    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120101')
+    main('20120101', 'Month_Long_CCA.pkl')
+#    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120101')
     
 
     
