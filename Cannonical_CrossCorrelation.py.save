@@ -6,7 +6,6 @@ Created on Thu May 18 19:32:30 2023
 """
 
 import pandas as pd
-pd.options.mode.chained_assignment = None
 import numpy as np
 import json
 from sklearn.cross_decomposition import CCA
@@ -46,12 +45,12 @@ def data_cleanup(data1: pd.DataFrame, data2: pd.DataFrame, strategy: str = 'line
     data1.set_index('Date_UTC', inplace = True)
     data2.set_index('Date_UTC', inplace = True)
     
-#    combined_data = pd.concat([data1, data2], axis = 1)
+    combined_data = pd.concat([data1, data2], axis = 1)
+    Combined_data =  combined_data.interpolate(method = 'linear'
+)
     
-#    combined_data.interpolate(method = 'linear', inplace = True)
     
-    
-    return data1, data2
+    return combined_data
     
 #    imputer = SimpleImputer(strategy  = strategy)
     
@@ -82,19 +81,7 @@ def data_generator(data, chunk_size):
     yield data[i:i + chunk_size]
     
     
-def fill_with_random_noise(column):
-  # Calculate the mean and standard deviation of the non-NaN values
-  mean = column[~column.isna()].mean()
-  std = column[~column.isna()].std()
-  
-  # Generate random values with the same length as the column
-  random_values = np.random.normal(loc=mean, scale=std, size=len(column))
-  
-  # Replace NaN values with random values
-  column[column.isna()] = random_values[column.isna()]
-  
-  
-  
+
   
 def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int = 128, step: int = 5) -> list:
     """
@@ -124,7 +111,7 @@ def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int 
         df1_window = df1.iloc[i : i+ window_size]
         df2_window = df2.iloc[i : i+ window_size]
         
-
+        
         detrend_df1 = detrend(df1_window[['dbe_geo','dbz_geo','dbn_geo']], axis = 0)
         detrend_df2 = detrend(df2_window[['dbe_geo','dbz_geo','dbn_geo']], axis = 0)
         
@@ -160,72 +147,23 @@ def corr_matrix(args):
         used, with the other one being ignored for this analysis. 
 
     '''
-    #load the args 
-    (main_station, compare_station, 
-     path, start_time_to_timestamp, 
-     stop_time_to_timestamp, Duration, 
-     window_size, step)  = args
+    main_station, compare_station, path, start_time_to_timestamp, stop_time_to_timestamp  = args
     
-    #get the expected lenght of the correlation coefficients list (how many coeff. is expected)
-#    print([main_station, compare_station])
-    days_in_minute = 1440*Duration
-    
-    N = 0 #number of expected datapoints
-    for i in range(0, days_in_minute - window_size, step):
-      N+=1
-      
-      
-    if main_station == compare_station:
-      
-      corr_const = [1]*N
-    else:
-      
-      primary_data = pd.read_feather(os.path.join(path, main_station))
-      secondary_data = pd.read_feather(os.path.join(path, compare_station))
-  
-      df1 ,df2 = data_cleanup(primary_data, secondary_data)
-      
-      del primary_data, secondary_data  # Delete unnecessary data
-      
-      
-      start_index1 = bisect.bisect(df1.index, start_time_to_timestamp)
-      stop_index1 = bisect.bisect(df1.index, stop_time_to_timestamp)
-  
-      start_index2 = bisect.bisect(df2.index, start_time_to_timestamp)
-      stop_index2 = bisect.bisect(df2.index, stop_time_to_timestamp)
-      
-      
-      primary = df1.iloc[start_index1:stop_index1]
-      secondary = df2.iloc[start_index2:stop_index2]
-      
-      if len(primary) > 0 and len(secondary) > 0:
-      
-        #check for percentage of missing values in the dfs
-        missing_percentages1 = (primary.isnull().sum() / len(primary)) * 100
-        missing_percentages2 = (secondary.isnull().sum() / len(secondary)) * 100
-        
-        if missing_percentages1[0] > 80 or missing_percentages2[0] > 80:
-          corr_const = [0]*N
-          
-        else:
-          
-          #fill all the nans with random values that oscilates around the mean
-          for col in primary.columns:
-            fill_with_random_noise(primary[col])
-          
-          for col in secondary.columns:
-            fill_with_random_noise(secondary[col])
-          
-  #        primary = primary.bfill()
-  #        secondary = secondary.bfill()
-          
-          corr_const = Windowed_Correlation(primary, secondary)
-        
-        del primary, secondary  # Delete processed data
+    primary_data = pd.read_feather(os.path.join(path, main_station))
+    secondary_data = pd.read_feather(os.path.join(path, compare_station))
 
-      else:
-        
-        corr_const = [0]*N
+    combined_data = data_cleanup(primary_data, secondary_data)
+    start_index = bisect.bisect(combined_data.index, start_time_to_timestamp)
+    stop_index = bisect.bisect(combined_data.index, stop_time_to_timestamp)
+
+    primary = (combined_data.iloc[start_index:stop_index, 0:3]).interpolate(method = 'linear')
+    secondary = (combined_data.iloc[start_index:stop_index, 3:6]).interpolate(method = 'linear')
+    
+    del primary_data, secondary_data, combined_data  # Delete unnecessary data
+
+    corr_const = Windowed_Correlation(primary, secondary)
+    
+    del primary, secondary  # Delete processed data
     
     return corr_const
   
@@ -248,9 +186,9 @@ def save_data(data, filename):
     pickle.dump(data, pickle_file)
     
 
-def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, window_size: int = 128,
+def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, save_interval: int = 3600,
                              num_processes: int = 10, save_path: str = '../TWINS/CCA/',
-                             filename: str = '_CCA.pickle', chunk: int = 10000, step: int = 5):
+                             filename: str = '_CCA.pickle', chunk: int = 10000):
     """
     Imports feather files with the saved magnetometer station datasets. The data is loaded and put through 
     the windowed_correlation function and the correlation coefficients are extracted. These are store in 
@@ -260,14 +198,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
         ----------
         path : Path to the feather files containing the mangetometer dataset.
         start_time: ('yyyymmdd') Time for the start of the timeframe being analyzed.
-        Duration: Duration ofthe timeframe in days. Default value is 28 days. 
-        num_processes: number of proccesses used for the parallelization. Default is 10
-        save_path: path to save output
-        chunk: how many datapoint should the date generator used spit out at a time. Default is 10000
-        filename: name of the coeff file
-        step: the overlap between two consecutive windows for the CCA. Default is 5
-        window_size: size of the rolling window used. Default is 128
-        
+        Duration: Duration ofthe timeframe in days. Default value is 5 days. 
         Returns
         -------
         Correlation_Matrix: Adjacent matrix (i X j) with the correlation coefficients of the ith and jth magnetometer stations.
@@ -275,12 +206,12 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
 
     """
     
-#    days_to_min = Duration * 1440
+    days_to_min = Duration * 1440
     station_list = os.listdir(path)
     station_list.sort()
     
     start_time_to_timestamp = pd.to_datetime(start_day, format='%Y%m%d')
-    stop_time_to_timestamp = start_time_to_timestamp + pd.DateOffset(days = Duration)
+    stop_time_to_timestamp = pd.to_datetime('20120129', format = '%Y%m%d')
    
     #Set the path name 
     
@@ -296,9 +227,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
         args_list = []
         for i, main_station in enumerate(station_list):
             for j, compare_station in enumerate(station_list):
-                args_list.append((main_station, compare_station, path,
-                                  start_time_to_timestamp, stop_time_to_timestamp,
-                                  Duration,window_size,step))
+                args_list.append((main_station, compare_station, path, start_time_to_timestamp, stop_time_to_timestamp))
         
         
         a = 0
@@ -320,7 +249,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
 #    return results
 
 
-def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2', 
+def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_', 
                    path: str = '../TWINS/CCA/', file_ext: str = '.pickle',
                    remove_path: bool = False):
   
@@ -355,7 +284,7 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
   combined_data = []
   
   
-  combined_filename = save_name if save_name else 'combined_sorted_type2.json'
+  combined_filename = save_name if save_name else 'combined_sorted.json'
     
     
   #Def the file path

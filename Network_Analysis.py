@@ -294,7 +294,11 @@ class NetworkAnalyzer:
     return dist_matrix
         
   
-  
+  def avg_connection_dist.(self, ):
+    '''
+    
+    '''
+    
   
   
 if __name__ = '__main__':
