@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import bisect
 import math
 import aacgmv2
+from tqdm import tqdm
 
 
 def tolerant_mean(arrs):
@@ -26,7 +27,7 @@ def tolerant_mean(arrs):
 
 
 
-def Process_SECS(path: str, date: str, time: str, latlon: bool):
+def Process_SECS(path: str, date: str, time: str, latlon: bool = True):
     '''
     This function takes in a set of Spherical Elementary Current Systems data files and processes
     them into a useful format. The processing involves extracting the datetime of each single
@@ -72,8 +73,11 @@ def Process_SECS(path: str, date: str, time: str, latlon: bool):
     name = []
     
     #load the files and append into Current_array
-    for file in glob.glob(path):
-        date_time = file[23:38]
+    for file in tqdm(glob.glob(path)):
+        
+        N = file.find('_')#find the '_' in the filename.     
+        date_time = file[N-8:N+7]
+
         yr = int(date_time[0:4])
         month = int(date_time[4:6])
         day = int(date_time[6:8])
@@ -255,25 +259,29 @@ def SECS_MLT(path: str, date: str, time: str, save_file: bool = True):
         
         
         # Iterate over the DataFrame and extract the elements, index, and column name
-        for index, row in df.iterrows():
+        for index, row in tqdm(df.iterrows(), total = len(df), desc = 'Calculating MLT'):
+            
+            mlt_ls = []
+            
             for col_name, value in row.items():
                 
                 dtime = index
                 
                 #calculate mlat, mlon, and mlt from AACGMv2
-                mlat, mlon, mlt = aacgmv2.get_aacgm_coord(*col_name,500,dtime, method = 'TRACE')
+                _, _, mlt = aacgmv2.get_aacgm_coord(*col_name,500,dtime, method = 'TRACE')
                 
                 #append all values to list
-                combined_list.append([index, *col_name, mlt, mlat, mlon, value])
+                mlt_ls.extend([mlt])
+            combined_list.append(mlt_ls)
         
-        df = pd.DataFrame(data = combined_list, columns = ['time','LAT',
-                                                           'LON','MLT',
-                                                           'MLAT','MLON',
-                                                           'Current'])
+        # df = pd.DataFrame(data = combined_list, columns = ['time','LAT',
+        #                                                    'LON','MLT',
+        #                                                    'MLAT','MLON',
+        #                                                    'Current'])
         
-        if save_file: df.to_csv(f'{date}_mlt.csv')
+        # if save_file: df.to_csv(f'{date}_mlt.csv')
         
-        return df
+        return combined_list
     
 
         
