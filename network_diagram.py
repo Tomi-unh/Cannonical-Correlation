@@ -62,7 +62,7 @@ def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stati
     list_array = np.array(correlation_result) #convert the list to array of 
     list_array = list_array.T
     
-    for time in range(length_of_result):
+    for time in tqdm(range(length_of_result), total = length_of_result, desc = 'Prepping Corr Matrix'):
         ss = list_array[time].reshape(n,n)
         
         time_key = datetime_object + dt.timedelta(minutes = time)
