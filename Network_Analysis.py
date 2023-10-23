@@ -12,20 +12,20 @@ import numpy as np
 from datetime import datetime, timedelta
 import bisect 
 import os
-
+import matplotlib.pyplot as plt
+import pickle
 
 
 class NetworkAnalyzer:
   
-  def __init__(self, data_path='../data/SuperMag', 
+  def __init__(self, 
                global_threshold,  # User must provide a value for the global threshold
-               date_str,  # User must provide the date in 'YYYYMMDD' format
+               date_str,  # User must provide the date in 'YYYYMMDD-HHMM' format
                num_stations=494,  # Default value for the number of stations
                steps=5,  # Default value for the number of steps
                SM_path='../data/SuperMag'):  # Default path to SuperMag data
     
     
-    self.data_path = data_path
     self.global_threshold = global_threshold
     self.date_str = date_str
     self.num_stations = num_stations
@@ -294,14 +294,50 @@ class NetworkAnalyzer:
     return dist_matrix
         
   
-  def avg_connection_dist.(self, ):
+  def avg_connection_dist(self, adj_matrix: dict):
     '''
     
     '''
     
+    sep_matrix = self.seperation_matrix()
+    
+    avg_con_dist = []
+    
+    for key, value in enumerate(adj_matrix):
+      
+      N = self.active_stations(key)
+      n_const = ((N**2) - N)
+      
+      combined = value*sep_matrix
+      combined_const = np.sum(combined) - np.trace(combined)
+      
+      dis_const = np.sum(sep_matrix) - np.trace(sep_matrix)
+      avg_dist = (combined_const)/n_const
+      avg_dist = (avg_dist)/dis_const
+      
+      
+      
+      avg_con_dist.append(avg_dist)
+    
+    return avg_con_dist
   
   
-if __name__ = '__main__':
+  def lat_bands(self, adj_matrix):
+    '''
+    '''
+    
+    for key, val in enumerate(adj_matrix):
+      rows, cols = val.shape
+      
+      for row in range(rows):
+        for col in range(cols):
+          
+          element = val[row,col]
+          
+          
+  
+  
+if __name__ == '__main__':
   
   '''
   Bring all the functions above together to produce various parameters of the network:
@@ -313,6 +349,49 @@ if __name__ = '__main__':
         
   
   '''
+  
+  #load the correlation matrix
+  path = '../TWINS/CCA/'
+  name = 'Trial.pickle'
+  filename = os.path.join(path,name)
+  
+  with open(filename) as file:
+    data = pickle.load(file)
+  
+  
+  
+  #instantiate the class
+  
+  network = NetworkAnalyzer
+  
+  
+  adj_matrix_dict = network.Adjacent_matrix(data)
+  
+  avg_connection_dist = network.avg_connection_dist(adj_matrix_dict)
+  total_connection = network.total_connection(adj_matrix_dict)
+  
+  
+  time_list = adj_matrix_dict.keys()
+  
+  time_list = list(time_list)
+  
+  
+  
+  fig, axes = plt.subplots(3,1, sharex = True, figsize = (25,25)) 
+  
+  
+  
+  #define the symbols for labelling 
+  alpha = "\u03B1"
+  
+  axes[0].plot(time_list,total_connection)
+  axes[0].set_xlabel('Time [UT]')
+  axes[0].set_ylabel(f'{alpha}')
+  
+  
+  axes[1].plot(time_list, avg_connection_dist)
+  axes[1].set_xlabel('Time [UT]')
+  axes[1].set_ylabel(r'$\theta_{ij}$')
   
   
   

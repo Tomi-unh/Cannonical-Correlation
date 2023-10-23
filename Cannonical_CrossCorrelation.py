@@ -4,7 +4,7 @@ Created on Thu May 18 19:32:30 2023
 
 @author: may7e
 """
-
+import re
 import pandas as pd
 pd.options.mode.chained_assignment = None
 import numpy as np
@@ -176,8 +176,10 @@ def corr_matrix(args):
       
       
     if main_station == compare_station:
+      print(f"{main_station} and Compare Station are the same. Correlation coefficient is set to 1")
       
       corr_const = [1]*N
+      
     else:
       
       primary_data = pd.read_feather(os.path.join(path, main_station))
@@ -198,16 +200,18 @@ def corr_matrix(args):
       primary = df1.iloc[start_index1:stop_index1]
       secondary = df2.iloc[start_index2:stop_index2]
       
-      if len(primary) > 0 and len(secondary) > 0:
+      if len(primary) > 0 and len(secondary) > 0: #Check is the stations have data for the time period
       
         #check for percentage of missing values in the dfs
         missing_percentages1 = (primary.isnull().sum() / len(primary)) * 100
         missing_percentages2 = (secondary.isnull().sum() / len(secondary)) * 100
         
-        if missing_percentages1[0] > 80 or missing_percentages2[0] > 80:
+        #if the missing percentage exceeds a %80, set the corr_const to 0
+        if missing_percentages1[0] > 80 or missing_percentages2[0] > 80: 
           corr_const = [0]*N
+          print("High missing data percentage. Correlation coefficient is set to 0.")
           
-        else:
+        else: # fill the missing nan values with random noises. 
           
           #fill all the nans with random values that oscilates around the mean
           for col in primary.columns:
@@ -223,8 +227,9 @@ def corr_matrix(args):
         
         del primary, secondary  # Delete processed data
 
-      else:
-        
+      else: # set the corr_const to 0 if one of the stations doesn't have any data for the time period.
+        print("No data available for the specified time period. Correlation coefficient is set to 0.")
+
         corr_const = [0]*N
     
     return corr_const
@@ -320,6 +325,15 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
 #    return results
 
 
+def natural_sort_key(s):
+    # Split the input string into text and numeric parts
+    parts = re.split(r'(\d+)', s)
+
+    # Convert numeric parts to integers for proper numeric sorting
+    parts[1::2] = map(int, parts[1::2])
+
+    return parts
+
 def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2', 
                    path: str = '../TWINS/CCA/', file_ext: str = '.pickle',
                    remove_path: bool = False):
@@ -362,11 +376,11 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
   combined_file_path = os.path.join(path, combined_filename)
   
   # Sort the list of pickle file paths
-  pickle_files.sort()
+  sorted_pickle_files = sorted(pickle_files, key = natural_sort_key)
   
   print(f'Got the {file_ext} files...')
   # Read and combine the data from the sorted pickle files
-  for full_path in tqdm(pickle_files, total = len(pickle_files), desc = f'Saving {file_ext} files'):
+  for full_path in tqdm(sorted_pickle_files, total = len(sorted_pickle_files), desc = f'Saving {file_ext} files'):
       with open(full_path, 'rb') as file:
           data = pickle.load(file)
           
@@ -423,7 +437,7 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
 
 if __name__ == '__main__':
     print('This script is being run as the main program...')
-    main('20120101', 'Month_Long_CCA.pkl')
+    main('20120101', 'Month_Long_CCA.json')
 #    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120101')
     
 
