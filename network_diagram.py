@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 
-def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stations: int = 494, steps: int = 1) -> dict:
+def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stations: int = 494, steps: int = 5) -> dict:
     '''
     Get the correlation matrices from the results of the CCA and store these matrices into a dictionary.
     The key for the matrices are the timestep for each individual matrix. E.g, time t, t+1, t+2...
@@ -62,10 +62,10 @@ def extract_corr_matrix(correlation_result: list, datetime: str, number_of_stati
     list_array = np.array(correlation_result) #convert the list to array of 
     list_array = list_array.T
     
-    for time in tqdm(range(length_of_result), total = length_of_result, desc = 'Prepping Corr Matrix'):
+    for time in tqdm(range(length_of_result), total = length_of_result, desc = 'Prepping Correlation Matrix...'):
         ss = list_array[time].reshape(n,n)
         
-        time_key = datetime_object + dt.timedelta(minutes = steps)
+        time_key = datetime_object + dt.timedelta(minutes = (steps)*time)
         corr_matrix[time_key] = ss
         
         

@@ -75,7 +75,14 @@ def data_cleanup(data1: pd.DataFrame, data2: pd.DataFrame, strategy: str = 'line
   
 def data_generator(data, chunk_size):
   '''
-  This function helps with data 
+    This function helps with data generation by yielding data in chunks.
+    Parameters:
+      ----------
+        - data: Data to be chunked and yielded.
+        - chunk_size: Size of each data chunk to yield.
+    Yields:
+      --------
+        - Chunk of data.
   '''
   
   for i in range(0, len(data), chunk_size):
@@ -83,6 +90,13 @@ def data_generator(data, chunk_size):
     
     
 def fill_with_random_noise(column):
+  '''
+    Fill missing values in a column with random noise based on the mean and standard deviation.
+    Parameters:
+      ----------
+        - column: A pandas Series with missing values to be filled.
+  '''
+  
   # Calculate the mean and standard deviation of the non-NaN values
   mean = column[~column.isna()].mean()
   std = column[~column.isna()].std()
@@ -97,7 +111,7 @@ def fill_with_random_noise(column):
   
   
 def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int = 128, step: int = 5) -> list:
-    """
+    '''
     This function takes in two different DataFrames of magnetometer stations, detrends the two Datasets and performs
     a cannonical cross correlation analysis (CCA) on them. This is done in windowed segements of 128 minutes, or as otherwise specified.
     The output is an array of time dependent correlation coefficient of the two DataFrames.
@@ -118,7 +132,9 @@ def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int 
                     Where N: is the length of the two parsed Dataset (must be the same length).
                     
 
-    """
+    '''
+    
+    
     coeff_list = []
     for i in range(0,len(df1) - window_size + 1, step):
         df1_window = df1.iloc[i : i+ window_size]
@@ -256,7 +272,7 @@ def save_data(data, filename):
 def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, window_size: int = 128,
                              num_processes: int = 10, save_path: str = '../TWINS/CCA/',
                              filename: str = '_CCA.pickle', chunk: int = 10000, step: int = 5):
-    """
+    '''
     Imports feather files with the saved magnetometer station datasets. The data is loaded and put through 
     the windowed_correlation function and the correlation coefficients are extracted. These are store in 
     an adjecent matrix for further analysis.
@@ -278,7 +294,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
         Correlation_Matrix: Adjacent matrix (i X j) with the correlation coefficients of the ith and jth magnetometer stations.
         
 
-    """
+    '''
     
 #    days_to_min = Duration * 1440
     station_list = os.listdir(path)
@@ -326,6 +342,14 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
 
 
 def natural_sort_key(s):
+    '''
+    Key function for sorting files naturally.
+    Parameters:
+        - s: File name.
+    Returns:
+        - Key for natural sorting.
+    '''
+    
     # Split the input string into text and numeric parts
     parts = re.split(r'(\d+)', s)
 
@@ -338,7 +362,7 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
                    path: str = '../TWINS/CCA/', file_ext: str = '.pickle',
                    remove_path: bool = False):
   
-  """
+  '''
   Combines and sorts pickle files with a specific target phrase in their names into a single pickle file
   and deletes the original pickle files.
   
@@ -354,7 +378,7 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
   Returns:
     --------
   -str: The path to the combined and sorted pickle file.
-  """
+  '''
   
   # Create a list to hold the paths of the pickle files
   pickle_files = []
@@ -409,7 +433,7 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
         
 def main(Date: str, file_name: str,Path: str = '../data/SuperMag/', 
   save_path: str = '../TWINS/CCA/', save_interval: int = 3600):
-    """
+    '''
     Store the Correlaion Matrix into a pickle file and give the files the appropriate name
     
         Parameters
@@ -423,7 +447,7 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
         -------
         None.
     
-    """
+    '''
     corr_matrix_parallelizer(Path, Date)
     
     combine_pickle(save_name = file_name)

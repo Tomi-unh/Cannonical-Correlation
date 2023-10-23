@@ -9,11 +9,14 @@ Created on Thu Oct  5 18:43:28 2023
 from network_diagram import extract_corr_matrix
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
+from tqdm import tqdm
 import bisect 
 import os
 import matplotlib.pyplot as plt
 import pickle
+import math
+import multiprocessing
 
 
 class NetworkAnalyzer:
@@ -22,6 +25,7 @@ class NetworkAnalyzer:
                global_threshold,  # User must provide a value for the global threshold
                date_str,  # User must provide the date in 'YYYYMMDD-HHMM' format
                num_stations=494,  # Default value for the number of stations
+               num_processes = 10, #Default value for number of processes for multiprocessing
                steps=5,  # Default value for the number of steps
                SM_path='../data/SuperMag'):  # Default path to SuperMag data
     
@@ -29,6 +33,7 @@ class NetworkAnalyzer:
     self.global_threshold = global_threshold
     self.date_str = date_str
     self.num_stations = num_stations
+    self.num_processes = num_processes
     self.steps = steps
     self.SM_path = SM_path
     
@@ -88,7 +93,7 @@ class NetworkAnalyzer:
     '''
     return np.where(array >= 0, 1, 0)
   
-  def active_stations(self, time: datetime):
+  def active_stations(self, time: datetime) -> int:
     '''
     This function gets the total number of active stations in a given time.
     
@@ -111,22 +116,24 @@ class NetworkAnalyzer:
       data = pd.read_feather(SM_data_path)
       
       #Get the closest time index of interest
-      index = bisect.bisect_left(data['Date_UTC'],time)
+      index = bisect.bisect(data['Date_UTC'],time)
       
-      #Get the value of one of the magnetic field data
-      value = data['dbz_geo'][index]
+      if index < len(data) and index != 0:
       
-      #check to see value isn't nan and increase N_stations by 1
-      if value:
-        N_stations =+1
-      
+        #Get the value of one of the magnetic field data
+        value = data['dbz_geo'].iloc[index]
+        
+        #check to see value isn't nan and increase N_stations by 1
+        if value:
+          N_stations =+1
+        
     return N_stations
       
       
 
   
   
-  def Adjacent_matrix(self, correlation_result: list):
+  def Adjacent_matrix(self, correlation_result: list) -> dict:
     '''
     This function takes in the CCA result which is a list of sublists. Each sublist is the CCA first cannonical 
     coefficient of the stations with respect to one specific station. This is then converted into a correlation 
@@ -153,22 +160,43 @@ class NetworkAnalyzer:
     #define the adjacent matrice dictionary
     #This dictionary contains 8039 matrices each of shape 494 by 494. 8039 timesteps
     #The number of matrices can change depending on the timestep.
-    adj_matrix = {}
+    adj_matrix_dict = {}
     
     #Go through each matrix in the correlation dictionary to get the adj_matrix for each of them.
-    for key, value in enumerate(corr_dict):
+    for key, value in tqdm(corr_dict.items()):
       
       #Subtract the global threshold from each element.
       diff = value - self.global_threshold
       
       #Stores the adjacent matrix for each correlation matrix under the same key.
-      adj_matrix[key] = self.heaviside(diff)
+      adj_matrix_dict[key] = self.heaviside(diff)
       
-    return adj_matrix
+    return adj_matrix_dict
     
-   
+  
+  
+  def parallel_deg_connection(self, adj_matrix: dict) -> list:
+    '''
+    Parallelize the calculation of average degrees of connection for all stations.
+    
+    Parameters:
+      ----------
+        adj_matrix (dict): A dictionary containing N matrices of shape MxM, where N represents
+        timesteps and M represents the number of stations.
+    
+    Returns:
+      --------
+        list: A list of M elements, each representing the average degree of connection for a specific station.
+    '''
+    
+    
+    pool = multiprocessing.Pool(self.num_processes)
+    results = pool.map(self.deg_connection_single, [(i, adj_matrix) for i in range(self.num_stations)])
+    pool.close()
+    pool.join()
+    return results 
       
-  def deg_connection(self, adj_matrix: dict) -> list:
+  def deg_connection(self, station: int, adj_matrix: dict) -> list:
     '''
     This function calculates the average degree of connections within a network that an adjacent matrix represents.
     This is based on the specfic global threshold given. This returns a list of M  (M is the total number of stations)
@@ -177,6 +205,7 @@ class NetworkAnalyzer:
     
     Parameter:
       ----------
+      -station: This is the ith station.
       -adj_matrix: This is a dictionary that contains N matrices of shape MxM. N represnts the timestep
       while M represents the numbers of stations. 
     
@@ -185,34 +214,26 @@ class NetworkAnalyzer:
       total_array: list of M elements for each station.
                     The elements represents the average degree of connection for each station
     '''
-    
-    adj_len = len(adj_matrix)
-    
-    
-    #initialize the sum total of the summation.
-    total_array = []
-    
-    for i in range(self.num_stations):
-      # 'i' select the respective station station that is being compared  to the rest.
-      total = []
-      for key, value in adj_matrix:
-        time = datetime.strptime(key, '%Y%m%d')
-        
-        
-        #Get the number of active stations
-        N = self.active_stations(time) - 1
-        
+
+    total = []
+    for key, value in adj_matrix.items():
+
+      #Get the number of active stations
+      N = self.active_stations(key) - 1
+      
+      if N > 0:
         #sum the specific row in question. These row represents the correlation 
         #value of station i with the other stations.
-        sum_matrix = (sum(value[i]))/N
+        sum_matrix = (sum(value[station]))/N
         
         #Append the summation into a list
-        total.append(sum_matrix)
+        
+      else:
+        sum_matrix = 0
       
-      #Append the average degree for each station into a list.
-      total_array.append((sum(total))/adj_len)
+      total.append(sum_matrix)
       
-    return total_array
+    return (sum(total))/len(adj_matrix)
   
   
   
@@ -235,7 +256,7 @@ class NetworkAnalyzer:
     tot_connection_list = []
     
     
-    for key, value in enumerate(adj_matrix):
+    for key, value in tqdm(adj_matrix.items()):
       
       N = self.active_stations(key)
       
@@ -251,7 +272,7 @@ class NetworkAnalyzer:
   
   
   
-  def seperation_matrix(self):
+  def seperation_matrix(self) -> np.ndarray:
     '''
     This function creates seperation matrix of the supermag stations.
     The elements of the matrix is the distance between sation i and j.
@@ -275,7 +296,7 @@ class NetworkAnalyzer:
     dist_matrix = [[0 for _ in range(M)] for _ in range(M)]
     
 
-    for i, primary_station in enumerate(files):
+    for i, primary_station in tqdm(enumerate(files)):
       df1 = pd.read_feather(os.path.join(self.SM_path, primary_station))
       
       #get lat lon for primary station
@@ -303,7 +324,7 @@ class NetworkAnalyzer:
     
     avg_con_dist = []
     
-    for key, value in enumerate(adj_matrix):
+    for key, value in tqdm(adj_matrix.items()):
       
       N = self.active_stations(key)
       n_const = ((N**2) - N)
@@ -326,7 +347,7 @@ class NetworkAnalyzer:
     '''
     '''
     
-    for key, val in enumerate(adj_matrix):
+    for key, val in tqdm(adj_matrix.items()):
       rows, cols = val.shape
       
       for row in range(rows):
