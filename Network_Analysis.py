@@ -936,7 +936,7 @@ class NetworkAnalyzer:
     plt.tight_layout()
     plt.show()
     
-    network_df.to_csv(os.path.join(path, f'Network_{self.date_str}.csv'))
+    network_df.to_csv(os.path.join(path, f'Network_{self.date_str[:8]}.csv'))
     
     print('DONE YAY!!!')
 
