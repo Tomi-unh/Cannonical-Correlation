@@ -20,8 +20,13 @@ Having the temperautre maps of the magnetotail, it is important to compare the d
 
   
 
-
-
-
 # Sample Results
-The network created helps to understand the spatial and temporal correlations between the temperature maps in the magnetotail and the ionospheric dynamics. 
+The network created helps to understand the spatial and temporal correlations between the temperature maps in the magnetotail and the ionospheric dynamics. Example of the temperature map along with the netowrk images and parameters are shown below. 
+![image](https://github.com/Tomi-unh/Cannonical-Correlation/assets/60202873/62273c87-2c30-4538-a778-5b6fba2155de)
+![Network_Graph_20120312-09_35](https://github.com/Tomi-unh/Cannonical-Correlation/assets/60202873/5fe6be8c-a7dc-4631-b3b9-ae90d923003b)
+![image](https://github.com/Tomi-unh/Cannonical-Correlation/assets/60202873/c5b455c4-598f-4b40-b8f5-74510e53dc68)
+![image](https://github.com/Tomi-unh/Cannonical-Correlation/assets/60202873/79a5fe4c-527e-47db-99b0-860750cc0bb7)
+
+
+
+
