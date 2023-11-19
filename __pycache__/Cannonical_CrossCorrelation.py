@@ -3,6 +3,16 @@
 Created on Thu May 18 19:32:30 2023
 
 @author: may7e
+
+
+  This script analyzes the supermag stations and creates a network of connections based on the correlations 
+that may or may not exist between two stations, or nodes in this case. A connections is said to exist if 
+the correlation between two different nodes exceeds a certain threshold. The correlation between two stations
+is determined using cannonical correlation analysis (CCA). CCA is a correlation technique that deals with 
+multivariate dataset. It finds the linear combination of the different datasets that maximizes the correlation
+between the two dataset. 
+--------------------------------------------------------------------------------------------------------------
+
 """
 import re
 import pandas as pd
@@ -70,7 +80,22 @@ def data_cleanup(data1: pd.DataFrame, data2: pd.DataFrame, strategy: str = 'line
 #        
 #        return cleaned_data
     
-  
+def natural_sort_key(s):
+  '''
+  Key function for sorting files naturally.
+  Parameters:
+      - s: File name.
+  Returns:
+      - Key for natural sorting.
+  '''
+
+  # Split the input string into text and numeric parts
+  parts = re.split(r'(\d+)', s)
+
+  # Convert numeric parts to integers for proper numeric sorting
+  parts[1::2] = map(int, parts[1::2])
+
+  return parts
   
   
 def data_generator(data, chunk_size):
@@ -110,7 +135,7 @@ def fill_with_random_noise(column):
   
   
   
-def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int = 128, step: int = 5) -> list:
+def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int = 128, step: int = 2) -> list:
     '''
     This function takes in two different DataFrames of magnetometer stations, detrends the two Datasets and performs
     a cannonical cross correlation analysis (CCA) on them. This is done in windowed segements of 128 minutes, or as otherwise specified.
@@ -187,12 +212,12 @@ def corr_matrix(args):
     days_in_minute = 1440*Duration
     
     N = 0 #number of expected datapoints
-    for i in range(0, days_in_minute - window_size, step):
+    for i in range(0, days_in_minute - window_size + 1, step):
       N+=1
       
       
     if main_station == compare_station:
-      print(f"{main_station} and Compare Station are the same. Correlation coefficient is set to 1")
+#      print(f"{main_station} and Compare Station are the same. Correlation coefficient is set to 1")
       
       corr_const = [1]*N
       
@@ -225,7 +250,7 @@ def corr_matrix(args):
         #if the missing percentage exceeds a %80, set the corr_const to 0
         if missing_percentages1[0] > 80 or missing_percentages2[0] > 80: 
           corr_const = [0]*N
-          print("High missing data percentage. Correlation coefficient is set to 0.")
+#          print("High missing data percentage. Correlation coefficient is set to 0.")
           
         else: # fill the missing nan values with random noises. 
           
@@ -239,12 +264,12 @@ def corr_matrix(args):
   #        primary = primary.bfill()
   #        secondary = secondary.bfill()
           
-          corr_const = Windowed_Correlation(primary, secondary)
+          corr_const = Windowed_Correlation(primary, secondary, step = step)
         
         del primary, secondary  # Delete processed data
 
       else: # set the corr_const to 0 if one of the stations doesn't have any data for the time period.
-        print("No data available for the specified time period. Correlation coefficient is set to 0.")
+#        print("No data available for the specified time period. Correlation coefficient is set to 0.")
 
         corr_const = [0]*N
     
@@ -269,7 +294,9 @@ def save_data(data, filename):
     pickle.dump(data, pickle_file)
     
 
-def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, window_size: int = 128,
+
+
+def corr_matrix_parallelizer(path: str, event_datetime: str, Duration: int, window_size: int = 128,
                              num_processes: int = 10, save_path: str = '../TWINS/CCA/',
                              filename: str = '_CCA.pickle', chunk: int = 10000, step: int = 5):
     '''
@@ -280,7 +307,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
         Parameters
         ----------
         path : Path to the feather files containing the mangetometer dataset.
-        start_time: ('yyyymmdd') Time for the start of the timeframe being analyzed.
+        start_time: ('yyyymmdd-HHmm') Time for the start of the timeframe being analyzed.
         Duration: Duration ofthe timeframe in days. Default value is 28 days. 
         num_processes: number of proccesses used for the parallelization. Default is 10
         save_path: path to save output
@@ -295,17 +322,28 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
         
 
     '''
-    
+    if Duration == 28:
+      file_id = 'Monthly'
+    else:
+      file_id = 'Event_based'
 #    days_to_min = Duration * 1440
     station_list = os.listdir(path)
-    station_list.sort()
+    station_list = sorted(station_list, key = natural_sort_key)
     
-    start_time_to_timestamp = pd.to_datetime(start_day, format='%Y%m%d')
-    stop_time_to_timestamp = start_time_to_timestamp + pd.DateOffset(days = Duration)
+    time_to_timestamp = pd.to_datetime(event_datetime, format='%Y%m%d-%H%M')
+    start_time_to_timestamp = time_to_timestamp - pd.DateOffset(days = (Duration)/2)
+    stop_time_to_timestamp =  time_to_timestamp + pd.DateOffset(days = (Duration)/2)
    
-    #Set the path name 
+    #Set the path name  based on the start date
     
-    File_SavePath = os.path.join(save_path, filename)
+    start_day = event_datetime[0:8]
+    save_folder = os.path.join(save_path, start_day)
+    
+    if not os.path.exists(save_folder):
+      print(f'Creating Folder for {start_day} files' )
+      os.makedirs(save_folder)
+      
+      
     print('Starting Canonical Correlation Analysis...')
     
     '''
@@ -329,7 +367,7 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
 #          save_data(results, File_SavePath)
           
           #Define the filename and path to save to. 
-          File_SavePath = os.path.join(save_path, f'Chunk_type2_{a}_{filename}')
+          File_SavePath = os.path.join(save_folder, f'{file_id}_{a}_{filename}')
           
           
           with open(File_SavePath, 'wb') as pickle_file:
@@ -341,26 +379,9 @@ def corr_matrix_parallelizer(path: str, start_day: str, Duration: int = 28, wind
 #    return results
 
 
-def natural_sort_key(s):
-    '''
-    Key function for sorting files naturally.
-    Parameters:
-        - s: File name.
-    Returns:
-        - Key for natural sorting.
-    '''
-    
-    # Split the input string into text and numeric parts
-    parts = re.split(r'(\d+)', s)
-
-    # Convert numeric parts to integers for proper numeric sorting
-    parts[1::2] = map(int, parts[1::2])
-
-    return parts
-
-def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2', 
+def combine_pickle(datetime: str, target_phrase: str, 
                    path: str = '../TWINS/CCA/', file_ext: str = '.pickle',
-                   remove_path: bool = False):
+                   remove_path: bool = False, Duration: int = 28):
   
   '''
   Combines and sorts pickle files with a specific target phrase in their names into a single pickle file
@@ -377,27 +398,32 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
   
   Returns:
     --------
-  -str: The path to the combined and sorted pickle file.
+  -str: The path to the combined and sorted json file.
   '''
-  
+  date = datetime[0:8]
   # Create a list to hold the paths of the pickle files
   pickle_files = []
   
+  save_folder = os.path.join(path, date)
   # Iterate over the pickle files in the directory and store their paths
-  for filename in os.listdir(path):
+  for filename in os.listdir(save_folder):
       if filename.endswith(file_ext) and target_phrase in filename:
-          full_path = os.path.join(path, filename)
+          full_path = os.path.join(save_folder, filename)
           pickle_files.append(full_path)
   
   # Write the combined and sorted data to a single pickle file
   combined_data = []
   
-  
-  combined_filename = save_name if save_name else 'combined_sorted_type2.json'
-    
+  #differentiate between monthly analysis or event based analysis
+  if Duration ==28:
+    combined_filename = f'Month_{date}.json'
+  else:
+    combined_filename = f'Event_{date}.json'
     
   #Def the file path
-  combined_file_path = os.path.join(path, combined_filename)
+  
+  
+  combined_file_path = os.path.join(save_folder, combined_filename)
   
   # Sort the list of pickle file paths
   sorted_pickle_files = sorted(pickle_files, key = natural_sort_key)
@@ -418,11 +444,6 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
       json.dump(combined_data, combined_file)
           
 
-
-
-      
-
-
   
   return_msg = f'Sucessfully Saved {combined_filename} to path: {combined_file_path}'
   
@@ -430,15 +451,16 @@ def combine_pickle(save_name: str = None, target_phrase: str = 'Chunk_type2',
   
   return combined_file_path
           
-        
-def main(Date: str, file_name: str,Path: str = '../data/SuperMag/', 
-  save_path: str = '../TWINS/CCA/', save_interval: int = 3600):
+  
+      
+def main(Datetime: str, Duration: int, steps: int, Path: str = '../../../data/supermag/', 
+  save_path: str = '../TWINS/CCA/'):
     '''
     Store the Correlaion Matrix into a pickle file and give the files the appropriate name
     
         Parameters
         ----------
-        Date : Start date for the analysis of the events. Takes the form 'yyyymmdd'.
+        Date : Start date for the analysis of the events. Takes the form 'yyyymmdd-hhmm'.
         File_name : Name for storing the Correlation Coefficients into a pickle file once the process has been completed.
         Path: Path to the SuperMag Data location.
         save_interval: Interval of periodic data dump into the pickle file. Defaults to 3600 seconds (1 hour). 
@@ -448,9 +470,13 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
         None.
     
     '''
-    corr_matrix_parallelizer(Path, Date)
+    corr_matrix_parallelizer(path = Path, event_datetime = Datetime, Duration = Duration, step = steps)
     
-    combine_pickle(save_name = file_name)
+    if Duration == 28:
+      combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Monthly')
+      
+    else:
+      combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Event')
 #    Data = corr_matrix_parallelizer(Path, Date)
 #    File_SavePath = os.path.join(save_path, file_name)
     
@@ -461,7 +487,7 @@ def main(Date: str, file_name: str,Path: str = '../data/SuperMag/',
 
 if __name__ == '__main__':
     print('This script is being run as the main program...')
-    main('20120101', 'Month_Long_CCA.json')
+    main('20120101')
 #    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120101')
     
 

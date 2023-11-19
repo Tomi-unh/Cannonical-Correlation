@@ -135,6 +135,14 @@ def plot_SECS(path: str, date: str, time: str, t_range: int = 6,
         Desired date of keogram plot in YYYYMMDD format please.
     time : str
         Time of the keogram plot in HH:mm format. 
+    t_range: int 
+        range of the time to be plotted (in hours). Default is 6 hours
+    split: float
+        How the 6 hours should be distributed around the timestep of interest.
+    latlon: bool
+        Whether the column name should include both the latitude and longitude or just the longitude.
+        
+    
     Returns
     -------
     None.
@@ -147,14 +155,15 @@ def plot_SECS(path: str, date: str, time: str, t_range: int = 6,
     yr = date[0:4]
     month = date[4:6]
     day = date[6:8]
-
+    
+    #define the event time, which is the time of interest (ex. time of SSC or particle injection)
     event_string = f"{yr}-{month}-{day}T{time}:00.000000000"
     
-    backtime = math.floor(t_range*split)
-    fronttime = t_range - backtime
+    backtime = math.floor(t_range*split) #This is the difference between the start time and event time
+    fronttime = t_range - backtime #This is the diff. between the end time and event time
 
-    start = np.datetime64(event_string) - np.timedelta64(backtime, 'h')
-    end = np.datetime64(event_string) + np.timedelta64(fronttime, 'h')
+    start = np.datetime64(event_string) - np.timedelta64(backtime, 'h') #starttime in datetime64
+    end = np.datetime64(event_string) + np.timedelta64(fronttime, 'h') #end time in datetime64
 
 
     

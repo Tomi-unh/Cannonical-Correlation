@@ -21,15 +21,15 @@ import matplotlib.dates as mdate
 from matplotlib.ticker import MaxNLocator
 import bisect
 import os
+from scipy.ndimage import gaussian_filter
 
-def temp_map(file_path, file_save_name):
-    
-    
+
+def temp_map(file_path, save_path): 
     """
     Parameters
     ----------
     file_path : STRING
-        Path of the file
+        Path of the data being plotted. 
     file_save_name : STRING
         File name used for saving the generated plot
 
@@ -56,34 +56,47 @@ def temp_map(file_path, file_save_name):
     
     temperature = data.savestruct.temparrays[0] #Stores the temperature array from the .sav file
     
+    # Apply Gaussian smoothing
+    smoothed_temperature = gaussian_filter(temperature, sigma=1)
+    
     """
     Get the start and stop time for labelling the output file. 
     """
     time_start = julian.from_jd(data.savestruct.starttime[0], fmt = 'mjd').strftime('%H:%M:%S')
     time_stop = julian.from_jd(data.savestruct.stoptime[0], fmt = 'mjd').strftime('%H:%M:%S')
     
+    date = julian.from_jd(data.savestruct.starttime[0], fmt = 'mjd').strftime('%Y%m%d')
     
+    file_id = julian.from_jd(data.savestruct.stoptime[0], fmt = 'mjd').strftime('%H_%M_%S')
 
-    ax=plt.gca()
-    im=ax.imshow(temperature, cmap = 'jet', origin = 'lower', extent = (-60,20, -40, 40), vmax = 25)
+    fig, ax = plt.subplots(figsize=(10, 10))  
+    im=ax.imshow(smoothed_temperature, cmap = 'jet', origin = 'lower', extent = (-60,20, -40, 40), vmax = 25)
     circle = plt.Circle((0,0),3, color = 'white')
     ax.add_patch(circle)
     ax.plot(x,y,'k--')
-    # ax.add_patch(Circle((120, 80), 6, color='white'))
-    # ax.add_patch(Arc((120, 80), 10*4, 10*4, angle=180.0, theta1=-30, theta2=30, linestyle='--', color='k'))
-    # ax.add_patch(Arc((120, 80), 40*4, 40*4, angle=180.0, theta1=-30, theta2=30, linestyle='--', color='white'))
-    # ax.plot([120+2*(-40*np.cos(np.pi/6)), 120+2*(-10*np.cos(np.pi/6))], 
-    #      [80+2*(40*np.sin(np.pi/6)), 80+2*(10*np.sin(np.pi/6))], linestyle='--', lw=.75, color='white')
-    # ax.plot([120+2*(-40*np.cos(np.pi/6)), 120+2*(-10*np.cos(np.pi/6))], 
-    #      [80+2*(-40*np.sin(np.pi/6)), 80+2*(-10*np.sin(np.pi/6))], linestyle='--', lw=.75, color='white')
     cbar = plt.colorbar(im)
     cbar.set_label('Temperature [keV]')
-    plt.xlim(-60,20)
+    plt.xlim(-30,10)
+    plt.ylim(-20,20)
     plt.xlabel('X GSM [Re]')
     plt.ylabel('Y GSM [Re]')
     # plt.set_ylim([np.min()])
-    plt.title(time_start + '-' + time_stop)
-    plt.savefig(file_save_name)
+    
+    # Add MLT lines
+    num_mlt_sectors = 8
+    mlt_interval = 2*np.pi / num_mlt_sectors
+    mlt_positions = np.arange(0, 2*np.pi, mlt_interval)
+    
+    for mlt_position in mlt_positions:
+        ax.plot([0, 40*np.cos(mlt_position)], [0, 40*np.sin(mlt_position)], 'k--')
+    
+    plt.title(f'{time_start} - {time_stop}')
+    
+    file_save_name = f'ENAmap_{date}_{file_id}.png'
+    
+    filename = os.path.join(save_path,file_save_name)
+    
+    plt.savefig(filename)
     plt.close()
     
 
