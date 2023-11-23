@@ -46,7 +46,7 @@ class temp_aggregate():
       return parts
 
 
-    def temp_max(self):
+    def temp_max(self, extent_region: str):
         '''
         Find the maximum temperature value in all the files being plotted and use this max value 
         to normalize all the files into a range [0,1]. The normalized temperature maps are then 
@@ -55,8 +55,14 @@ class temp_aggregate():
     
         Parameters
         ----------
-        path : TYPE
-            DESCRIPTION.
+        extent_region: Defines the region of interest for temperature map averaging. Choices of 'None',
+                       'Dawn', 'Dusk', and 'Geo'.
+                Default: Sets the extent to the default as defined in the class global function.
+                      Current default is set to (-30,10,-20,20)
+                Dawn: Sets the extent to the dawnside of the magnetotail. (-30,0,-20,0)
+                Dusk: Sets the extent to the duskside of the magnetotail. (-30,0,0,20)
+                Geo: Sets the extent to just geosynchronous orbit. (-6.6,6.6,-6.6,6.6)
+                PS: Sets the extent to the 'plasma sheet (crude definition of it)'. (-30,0,-5,5)
     
         Returns
         -------
@@ -80,9 +86,30 @@ class temp_aggregate():
             y_range = np.linspace(-40, 40, image_height)
             
             # Create boolean masks for x and y ranges
-            x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
-            y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
             
+            if extent_region == 'Default':
+                x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
+                y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
+           
+            elif extent_region == 'Dawn':
+                extent_tuple = (-30,0,-20,0)
+                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+           
+            elif extent_region == 'Dusk':
+                extent_tuple = (-30,0,0,20)
+                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+           
+            elif extent_region == 'Geo':
+                extent_tuple = (-6.6,6.6,-6.6,6.6)
+                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+            
+            elif extent_region == 'PS':
+                extent_tuple = (-30,0,-5,5)
+                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])            
             # Apply the masks to the image
             selected_pixels = temperature[y_mask][:, x_mask]
            
@@ -92,16 +119,32 @@ class temp_aggregate():
     
     
         
-    def temp_timeseries(self):
+    def temp_timeseries(self, data_opt: str = 'mean', extent_region: str ='Default'):
         '''
         This function takes in sets of temperature data files and converts to a timeseries.
         This is done by averaging the non zero values of the temperature maps for each timestep,
         and appending the value along with its corresponding time value to a list. The generated 
         timeseries is bounded between [0,1] from the normalization performed.
-
-        Returns
-        -------
-        None.
+        
+        
+        Parameters:
+            ---------
+            data_opt: Chose the type of data calculation and output. Options are (mean and std).
+                       If data_opt. = 'mean', the mean value of the non zero pixels would be 
+                       calculated for each temperature map.
+                       If data_opt. = 'std', the mean of pixels that meet 3*std of the temperature
+                       map will be calculated for each temperature map.
+            extent_region: Defines the region of interest for temperature map averaging. Choices of 'None',
+                           'Dawn', 'Dusk', and 'Geo'.
+                    Default: Sets the extent to the default as defined in the class global function.
+                          Current default is set to (-30,10,-20,20)
+                    Dawn: Sets the extent to the dawnside of the magnetotail. (-30,0,-20,0)
+                    Dusk: Sets the extent to the duskside of the magnetotail. (-30,0,0,20)
+                    Geo: Sets the extent to just geosynchronous orbit. (-6.6,6.6,-6.6,6.6)
+                    PS: Sets the extent to the plasma sheet. (-30,0,-5,5)
+            Returns
+            -------
+            None.
 
         '''
         date = self.path[-8:]
@@ -110,7 +153,9 @@ class temp_aggregate():
         
         files = sorted(files, key = self.natural_sort_key)
         
-        norm_val = self.temp_max() #normalization constant
+        norm_val = self.temp_max(extent_region) #normalization constant
+        
+        print(f'Maximum Temperature Value for is: {norm_val}')
         
         if norm_val > 200: norm_val = 200
         
@@ -137,16 +182,45 @@ class temp_aggregate():
                 x_range = np.linspace(-60, 20, image_width)
                 y_range = np.linspace(-40, 40, image_height)
                 
+                
+                
                 # Create boolean masks for x and y ranges
-                x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
-                y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
+                
+                if extent_region == 'Default':
+                    x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
+                    y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
+               
+                elif extent_region == 'Dawn':
+                    extent_tuple = (-30,0,-20,0)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+               
+                elif extent_region == 'Dusk':
+                    extent_tuple = (-30,0,0,20)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+               
+                elif extent_region == 'Geo':
+                    extent_tuple = (-6.6,6.6,-6.6,6.6)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+                
+                elif extent_region == 'PS':
+                    extent_tuple = (-30,0,-5,5)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])                
+                
                 
                 # Apply the masks to the image
                 selected_pixels = temperature[y_mask][:, x_mask]
                 
                 norm_temp = selected_pixels/norm_val #normalize the temperature values 
                 
-                avg = norm_temp[norm_temp !=0].mean() #get the average of the non zero values
+                
+                if data_opt =='mean':
+                    avg = norm_temp[norm_temp !=0].mean() #get the average of the non zero values
+                else:
+                    avg = norm_temp[norm_temp > 3*np.std(norm_temp)].mean()
                 
 
                 #convert time strings to datetime
@@ -172,28 +246,60 @@ class temp_aggregate():
                 x_range = np.linspace(-60, 20, image_width)
                 y_range = np.linspace(-40, 40, image_height)
                 
+               
                 # Create boolean masks for x and y ranges
-                x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
-                y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
+                
+                if extent_region == 'Default':
+                    x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
+                    y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
+               
+                elif extent_region == 'Dawn':
+                    extent_tuple = (-30,0,-20,0)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+               
+                elif extent_region == 'Dusk':
+                    extent_tuple = (-30,0,0,20)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+               
+                elif extent_region == 'Geo':
+                    extent_tuple = (-6.6,6.6,-6.6,6.6)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+                
+                elif extent_region == 'PS':
+                    extent_tuple = (-30,0,-5,5)
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+                    
                 
                 # Apply the masks to the image
                 selected_pixels = temperature[y_mask][:, x_mask]
                 
                 norm_temp = selected_pixels/norm_val
-                avg = norm_temp[norm_temp !=0].mean()#get the average of the non zero values
+                
+                if data_opt =='mean':
+                    avg = norm_temp[norm_temp !=0].mean() #get the average of the non zero values
+                else:
+                    avg = norm_temp[norm_temp > 3*np.std(norm_temp)].mean()
                 
                 
                 dt_start = julian.from_jd(data.savestruct.starttime[0], fmt = 'mjd')
                 dt_stop = julian.from_jd(data.savestruct.stoptime[0], fmt = 'mjd')
                 time_diff = (dt_stop - base_time).total_seconds()
                 
+
+                
                 base_time = dt_stop
                 
-                if time_diff < 300:
+                if 100 < time_diff < 300:
                     
                     time_val.append(dt_stop)
                     time_series.append(avg)
                     
+                elif time_diff < 100:
+                    pass
                     
                 elif 300 < time_diff < 500:
                     time_elem = dt_stop + dt.timedelta(seconds = 215)
@@ -212,13 +318,16 @@ class temp_aggregate():
                     time_val.append(time_elem2)
                     time_series.append(np.nan)
         
-        filepath = f'../Paper/Network_plot/{date}'
+        filepath = f'../CCA_Project/Network_plot/{date}'
         
         if not os.path.exists(filepath):
             os.makedirs(filepath)
         
         
-        filename = f'{date}_avg_temp.csv' 
+        if extent_region == 'Default': extent_region = '' #set extent region to an empty string for default
+        
+        filename = f'{date}_{data_opt}_temp_{extent_region}.csv'
+            
         
         temp_df = pd.DataFrame({'Time': time_val, 'Temperature': time_series})
         
@@ -237,25 +346,26 @@ class temp_aggregate():
         
         
         
-        # Plotting columns using matplotlib
-        plt.plot(temp_df['Time'],temp_df_filled['Temperature'],marker='o')
+        # # Plotting columns using matplotlib
+        # plt.plot(temp_df['Time'],temp_df_filled['Temperature'],marker='o')
         
-        # Adding labels and legend
-        plt.xlabel('Time')
-        plt.ylabel('Average Temperature [kev]')
+        # # Adding labels and legend
+        # plt.xlabel('Time')
+        # plt.ylabel('Average Temperature [kev]')
         
-        # Formatting the x-axis with time ticks
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-        plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=1))  # Set the interval as needed
+        # # Formatting the x-axis with time ticks
+        # plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        # plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=1))  # Set the interval as needed
         
-        # Rotating the x-axis labels for better readability
-        plt.gcf().autofmt_xdate()
+        # # Rotating the x-axis labels for better readability
+        # plt.gcf().autofmt_xdate()
         
-        # Display the plot
-        plt.show()
+        # # Display the plot
+        # plt.show()
+        
+        temp_df_filled.to_csv(os.path.join(filepath,filename))
         
         
-        temp_df.to_csv(os.path.join(filepath,filename))
     
     def plot_temp(self):
         
@@ -264,21 +374,28 @@ class temp_aggregate():
         '''
         date = self.path[-8:]
         
-        filepath = f'../Paper/Network_plot/{date}/temp_maps'
+        filepath = f'../CCA_Project/Network_plot/{date}/temp_maps'
         
         if not os.path.exists(filepath):
             os.makedirs(filepath)
         
-        files = [file for file in os.listdir(self.path) if '.sav' in file]
+        temp_file = [temp_file for temp_file in os.listdir(filepath)]
         
-        files = sorted(files, key = self.natural_sort_key)
-        
-        for file in tqdm(files, total = len(files), desc = 'Plotting ENA Maps'):          
-            temp_map(os.path.join(self.path,file), filepath)
+        if temp_file:
+            print('Temperature File already exists')
+        else:
+            files = [file for file in os.listdir(self.path) if '.sav' in file]
+            
+            files = sorted(files, key = self.natural_sort_key)
+            
+            for file in tqdm(files, total = len(files), desc = 'Plotting ENA Maps'):          
+                temp_map(os.path.join(self.path,file), filepath) #plot the temperature map using the temp_map function
 
     
 def network_geomag_plot(date: str,
-                network_path: str = '../Paper/Network_plot',
+                        temp_opt: str = 'std',
+                        extent_region: str = 'Default',
+                network_path: str = '../CCA_Project/Network_plot',
                 temp_path: str = 'D:/TWINS_SAV', 
                 omni_path: str = 'D:/OMNI_FILES'):
     '''
@@ -294,11 +411,22 @@ def network_geomag_plot(date: str,
     None.
 
     '''
+    #Set the string to empty for Default. Makes the plot labelling prettier
+    if extent_region =='Default': extent_region = ''
+    
     
     event_time = dt.datetime.strptime(date, '%Y%m%d-%H%M')
     
     #load the average temperature timeseries and define the start and stop time based on it. 
-    avg_temp_data = pd.read_csv(os.path.join(network_path,f'{date[:8]}/{date[:8]}_avg_temp.csv'))
+    
+    
+    avg_temp_data = pd.read_csv(os.path.join(network_path,f'{date[:8]}/{date[:8]}_{temp_opt}_temp_{extent_region}.csv'))
+    
+    filename = os.path.join(network_path,f'{date[:8]}/{date[:8]}_{temp_opt}_plot_{extent_region}.png')
+
+        
+        
+        
     avg_temp_data['Time'] = pd.to_datetime(avg_temp_data['Time'])
     
     start = avg_temp_data['Time'].iloc[0]
@@ -356,8 +484,8 @@ def network_geomag_plot(date: str,
     
     ax5 = ax1.twinx()
     ax5.plot(avg_temp_data['Time'], avg_temp_data['Temperature'], 
-             color = 'r', marker = 'o', label = 'Average Temperature')
-    ax5.set_ylabel('Average Temperature [kev]', fontsize = 10, fontweight = 'bold')
+             color = 'r', marker = 'o', label = 'Average Temperature ')
+    ax5.set_ylabel(f'{extent_region} Average Temperature [kev]', fontsize = 10, fontweight = 'bold')
     ax5.tick_params(axis='y', colors='red')
     ax5.yaxis.label.set_color('red')
     
@@ -421,18 +549,27 @@ def network_geomag_plot(date: str,
     fig.align_ylabels()
     fig.subplots_adjust(hspace=0)
     fig.suptitle(f'{date[:8]} Network Connection and Geomagnetic Background')
-    plt.savefig(os.path.join(network_path,f'{date[:8]}/{date[:8]}_plot.png'))
+    plt.savefig(filename)
     plt.show()
 
 
 if __name__ == '__main__':
     
-    path = 'D:/TWINS_SAV/20150601'
+    date = '20150528-0245'
+    
+    path = f'D:/TWINS_SAV/{date[:8]}'
     
     temp_agg = temp_aggregate(path)
     
     temp_agg.plot_temp()
-    temp_agg.temp_timeseries()
+    
+    arg = ['Default', 'Dusk', 'Dawn', 'Geo', 'PS']
+    
+    for elem in arg:
+        
+        temp_agg.temp_timeseries(extent_region = elem)
+        
+        network_geomag_plot(date, temp_opt = 'mean', extent_region = elem)
         
         
         

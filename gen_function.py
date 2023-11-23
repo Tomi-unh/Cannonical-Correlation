@@ -24,6 +24,166 @@ import os
 from scipy.ndimage import gaussian_filter
 
 
+def goes_plot(date: str, file_savepath: str, goes_path: str):
+    '''
+    Function to plot GOES satellite parameters like B field and the particle data. 
+
+    Parameters
+    ----------
+    date : str 
+        In 'yyyymmdd-hhmm' format. This is the time and date of interest.
+    file_savepath : str
+        Path to save the plotted figure.
+    goes_path: str
+        Path to the GOES file location. 
+
+    Returns
+    -------
+    None.
+
+    '''
+    for sat in sat_ls:
+        filename = [
+        f'D:\\Random\\{sat}_magpd_19mp1_16s_{date[:8]}_{date[:8]}.nc',
+        f'D:\\Random\\{sat}_magpd_19mp2_16s_{date[:8]}_{date[:8]}.nc',
+        f'D:\\Random\\{sat}_magpd_19mp3_16s_{date[:8]}_{date[:8]}.nc',
+        f'D:\\Random\\{sat}_magpd_19mp4_32s_{date[:8]}_{date[:8]}.nc',
+        f'D:\\Random\\{sat}_magpd_19mp5_32s_{date[:8]}_{date[:8]}.nc'
+        ]
+        
+        pattern6 = '{sat}_magneto_512ms_20161025_20161025.nc'
+        
+        
+        
+        '''
+        Ignore the g at the end of every constant. It's meaningless but used to have meaning in a previous code
+        and I can't be bothered to remove all of it from the code below.
+        '''
+        
+        
+        for file in filename:
+            
+            Ion_data = nc.Dataset(os.path.join(path,file)) #load the data 
+            
+            Epoch_Ion = timeconv(np.array(Ion_data.variables['time_tag'][:])/1000) #load the time data
+            
+            start_index = bisect.bisect_left(Epoch_Ion,start) #bisect to get the index based on time data
+            
+            stop_index = bisect.bisect_left(Epoch_Ion,end)  #get stop index
+            
+            flux_ls = []
+            for i in range(1,10):
+                flux_data = [np.ma.MaskedArray.filled(Ion_data.variables[f'M_{i}{val}_UDTC_UNCOR_CR'][start_index:stop_index]) for i in range(1, 10)]
+                ave_flux = np.mean(flux_data, axis=0)
+            
+            
+            Time_ls = Epoch_Ion[start_index:stop_index] #define the time range of interest 
+        
+        Ion_data1g = nc.Dataset(name1)
+        Ion_data2g = nc.Dataset(name2)
+        Ion_data3g = nc.Dataset(name3)
+        Ion_data4g = nc.Dataset(name4)
+        Ion_data5g = nc.Dataset(name5)
+        
+        
+        Mag_data_g = nc.Dataset(path + pattern6)
+        
+        Epoch_Ion1_g = timeconv(np.array(Ion_data1g.variables['time_tag'][:])/1000)
+        Epoch_Ion2_g = timeconv(np.array(Ion_data2g.variables['time_tag'][:])/1000)
+        Epoch_Ion3_g = timeconv(np.array(Ion_data3g.variables['time_tag'][:])/1000)
+        Epoch_Ion4_g = timeconv(np.array(Ion_data4g.variables['time_tag'][:])/1000)
+        Epoch_Ion5_g = timeconv(np.array(Ion_data5g.variables['time_tag'][:])/1000)
+        
+        
+        Epoch_Mag = timeconv(np.array(Mag_data_g.variables['time_tag'][:])/1000)
+        #    Epoch_fgm = FGM_data['Epoch'][:]
+        
+        start_index1g = bisect.bisect_left(Epoch_Ion1_g,start)
+        start_index2g = bisect.bisect_left(Epoch_Ion2_g,start)
+        start_index3g = bisect.bisect_left(Epoch_Ion3_g,start)
+        start_index4g = bisect.bisect_left(Epoch_Ion4_g,start)
+        start_index5g = bisect.bisect_left(Epoch_Ion5_g,start)
+        start_index6g = bisect.bisect_left(Epoch_Mag,start)
+        
+        stop_index1g = bisect.bisect_left(Epoch_Ion1_g,end)
+        stop_index2g = bisect.bisect_left(Epoch_Ion2_g,end)
+        stop_index3g = bisect.bisect_left(Epoch_Ion3_g,end)
+        stop_index4g = bisect.bisect_left(Epoch_Ion4_g,end)
+        stop_index5g = bisect.bisect_left(Epoch_Ion5_g,end)
+        stop_index6g = bisect.bisect_left(Epoch_Mag,end)
+        
+        Epoch1_g = Epoch_Ion1_g[start_index1g:stop_index1g]
+        Epoch2_g = Epoch_Ion2_g[start_index2g:stop_index2g]
+        Epoch3_g = Epoch_Ion3_g[start_index3g:stop_index3g]
+        Epoch4_g = Epoch_Ion4_g[start_index4g:stop_index4g]
+        Epoch5_g = Epoch_Ion5_g[start_index5g:stop_index5g]
+        
+        Epoch6_g = Epoch_Mag[start_index6g:stop_index6g]
+        
+        
+        # event_index6 = bisect.bisect(Epoch6_g, event)
+        # event_index3 = bisect.bisect(Epoch3_g, event)
+        
+        
+        
+        P1_flux1 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_1' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux2 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_2' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux3 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_3' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux4 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_4' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux5 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_5' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux6 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_6' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux7 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_7' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux8 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_8' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        P1_flux9 = np.ma.MaskedArray.filled(Ion_data1g.variables['M_9' + val1 + '_UDTC_UNCOR_CR'][start_index1g:stop_index1g])
+        
+        P2_flux1 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_1' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux2 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_2' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux3 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_3' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux4 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_4' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux5 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_5' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux6 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_6' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux7 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_7' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux8 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_8' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        P2_flux9 = np.ma.MaskedArray.filled(Ion_data2g.variables['M_9' + val2 + '_UDTC_UNCOR_CR'][start_index2g:stop_index2g])
+        
+        P3_flux1 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_1' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux2 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_2' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux3 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_3' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux4 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_4' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux5 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_5' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux6 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_6' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux7 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_7' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux8 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_8' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        P3_flux9 = np.ma.MaskedArray.filled(Ion_data3g.variables['M_9' + val3 + '_UDTC_UNCOR_CR'][start_index3g:stop_index3g])
+        
+        P4_flux1 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_1' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux2 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_2' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux3 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_3' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux4 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_4' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux5 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_5' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux6 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_6' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux7 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_7' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux8 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_8' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        P4_flux9 = np.ma.MaskedArray.filled(Ion_data4g.variables['M_9' + val4 + '_UDTC_UNCOR_CR'][start_index4g:stop_index4g])
+        
+        P5_flux1 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_1' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux2 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_2' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux3 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_3' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux4 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_4' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux5 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_5' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux6 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_6' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux7 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_7' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux8 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_8' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        P5_flux9 = np.ma.MaskedArray.filled(Ion_data5g.variables['M_9' + val5 + '_UDTC_UNCOR_CR'][start_index5g:stop_index5g])
+        
+        Ave_flux1 = np.mean([P1_flux1,P1_flux2,P1_flux3,P1_flux4,P1_flux5,P1_flux6,P1_flux7,P1_flux8,P1_flux9], axis = 0)
+        Ave_flux2 = np.mean([P2_flux1,P2_flux2,P2_flux3,P2_flux4,P2_flux5,P2_flux6,P2_flux7,P2_flux8,P2_flux9], axis = 0)
+        Ave_flux3 = np.mean([P3_flux1,P3_flux2,P3_flux3,P3_flux4,P3_flux5,P3_flux6,P3_flux7,P3_flux8,P3_flux9], axis = 0)
+        Ave_flux4 = np.mean([P4_flux1,P4_flux2,P4_flux3,P4_flux4,P4_flux5,P4_flux6,P4_flux7,P4_flux8,P4_flux9], axis = 0)
+        Ave_flux5 = np.mean([P5_flux1,P5_flux2,P5_flux3,P5_flux4,P5_flux5,P5_flux6,P5_flux7,P5_flux8,P5_flux9], axis = 0)
+
+    
+
 def temp_map(file_path, save_path): 
     """
     Parameters
