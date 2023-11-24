@@ -20,16 +20,20 @@ import math
 import json
 import re
 
-#import networkx as nx
+#load the .json variable file
+json_filename = 'Network_variables.json'
+
+with open(json_filename, 'r') as global_file:
+    global_var = json.load(global_file)
 
 class NetworkAnalyzer:
   
   def __init__(self, 
-               date_str,  # User must provide the date in 'YYYYMMDD-HHMM' format
-               num_stations=494,  # Default value for the number of stations
-               num_processes = 10, #Default value for number of processes for multiprocessing
-               steps= 5,  # Default value for the number of steps
-               SM_path='../../../data/supermag'):  # Default path to SuperMag data
+               date_str: str = global_var['date_str'] ,  # User must provide the date in 'YYYYMMDD-HHMM' format
+               num_stations: int = global_var['num_stations'],  # Default value for the number of stations
+               num_processes: int  = global_var['num_processes'], #Default value for number of processes for multiprocessing
+               steps: int = global_var['step'],  # Default value for the number of steps
+               SM_path: str =global_var['SM_path']):  # Default path to SuperMag data
 
     self.date_str = date_str
     self.num_stations = num_stations

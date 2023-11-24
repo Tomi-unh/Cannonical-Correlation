@@ -5,12 +5,25 @@ Created on Thu May 18 19:32:30 2023
 @author: may7e
 
 
-  This script analyzes the supermag stations and creates a network of connections based on the correlations 
-that may or may not exist between two stations, or nodes in this case. A connections is said to exist if 
-the correlation between two different nodes exceeds a certain threshold. The correlation between two stations
-is determined using cannonical correlation analysis (CCA). CCA is a correlation technique that deals with 
-multivariate dataset. It finds the linear combination of the different datasets that maximizes the correlation
-between the two dataset. 
+  This script analyzes the supermag stations and creates a matrix of connections based on the correlations 
+ between two stations, or nodes in this case. This is the first step in creating a network of supermag stations.
+ To create the network, two sets of correlation coefficients are required. The first one being the normalization 
+ correlation coefficient. This correlation coefficient is performed on the dataset over an extended period of time
+ (28 days in this case). This extended correlation is used to normlaize the average degree of connection between 
+ all the stations to ~ 5%. This means that at quiet times, each station (that has data) has about 5% degree 
+ in the network. Normalizing the degree to 5% for all station generates station specific threshold 
+ (Network_Analysis.py) that is then applied on the other set of calculated coefficients to get the time dependent
+ network. 
+ 
+ HOW TO RUN:
+     Running the script is simple. 
+         1.) Import main
+         2.) Define the datetime string in the format: yyyymmdd-hhmm
+         3.) Set all_calc to True. This both calculations in one go.
+         
+    ALTERNATIVELY: Just input the date time of interest in the if __name__ == '__main__' function below
+                   and run the file.
+ 
 --------------------------------------------------------------------------------------------------------------
 
 """
@@ -27,6 +40,15 @@ import bisect
 from tqdm import tqdm 
 from multiprocessing import Pool
 
+json_filename = "global_variables_CCA.json"
+
+
+#Get the global variables. This .json file only contains the path strings as
+#they are the only global vriables used in the script. 
+with open(json_filename, 'r') as global_file:
+    global_var = json.load(global_file)
+    
+    
 
 def data_cleanup(data1: pd.DataFrame, data2: pd.DataFrame, strategy: str = 'linear', inplace: bool = False) -> pd.DataFrame:
     """
@@ -56,29 +78,11 @@ def data_cleanup(data1: pd.DataFrame, data2: pd.DataFrame, strategy: str = 'line
     data1.set_index('Date_UTC', inplace = True)
     data2.set_index('Date_UTC', inplace = True)
     
-#    combined_data = pd.concat([data1, data2], axis = 1)
-    
-#    combined_data.interpolate(method = 'linear', inplace = True)
-    
+
     
     return data1, data2
     
-#    imputer = SimpleImputer(strategy  = strategy)
-    
-    
-#    if inplace:
-#        data = data[['Date_UTC','dbe_geo','dbz_geo','dbn_geo']]
-#        
-#        data.set_index('Date_UTC', inplace = True)
-#        data1 = pd.DataFrame(imputer.fit_transform(data), columns = data.columns, index = data.index)
-#        
-#    else:
-#        data1 = data[['Date_UTC','dbe_geo','dbz_geo','dbn_geo']]
-#        data1.set_index('Date_UTC', inplace = True)
-#        
-#        cleaned_data = pd.DataFrame(imputer.fit_transform(data1), columns = data1.columns, index = data1.index)
-#        
-#        return cleaned_data
+
     
 def natural_sort_key(s):
   '''
@@ -135,7 +139,9 @@ def fill_with_random_noise(column):
   
   
   
-def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, window_size: int = 128, step: int = 2) -> list:
+def Windowed_Correlation(df1: pd.DataFrame ,df2: pd.DataFrame, 
+                         window_size: int = global_var['window_size'],
+                         step: int = global_var['steps']) -> list:
     '''
     This function takes in two different DataFrames of magnetometer stations, detrends the two Datasets and performs
     a cannonical cross correlation analysis (CCA) on them. This is done in windowed segements of 128 minutes, or as otherwise specified.
@@ -261,9 +267,7 @@ def corr_matrix(args):
           for col in secondary.columns:
             fill_with_random_noise(secondary[col])
           
-  #        primary = primary.bfill()
-  #        secondary = secondary.bfill()
-          
+
           corr_const = Windowed_Correlation(primary, secondary, step = step)
         
         del primary, secondary  # Delete processed data
@@ -296,8 +300,9 @@ def save_data(data, filename):
 
 
 
-def corr_matrix_parallelizer(path: str, event_datetime: str, Duration: int, window_size: int = 128,
-                             num_processes: int = 10, save_path: str = '../TWINS/CCA/',
+def corr_matrix_parallelizer(event_datetime: str, Duration: int, path: str = global_var['path'], 
+                             window_size: int = global_var['window_size'],
+                             num_processes: int = 10, save_path: str = global_var['save_path'],
                              filename: str = '_CCA.pickle', chunk: int = 10000, step: int = 5):
     '''
     Imports feather files with the saved magnetometer station datasets. The data is loaded and put through 
@@ -380,7 +385,7 @@ def corr_matrix_parallelizer(path: str, event_datetime: str, Duration: int, wind
 
 
 def combine_pickle(datetime: str, target_phrase: str, 
-                   path: str = '../TWINS/CCA/', file_ext: str = '.pickle',
+                   path: str = global_var['save_path'], file_ext: str = '.pickle',
                    remove_path: bool = False, Duration: int = 28):
   
   '''
@@ -400,11 +405,13 @@ def combine_pickle(datetime: str, target_phrase: str,
     --------
   -str: The path to the combined and sorted json file.
   '''
-  date = datetime[0:8]
+  date = datetime[0:8] #define just the date value without the time part
+  
   # Create a list to hold the paths of the pickle files
   pickle_files = []
   
   save_folder = os.path.join(path, date)
+  
   # Iterate over the pickle files in the directory and store their paths
   for filename in os.listdir(save_folder):
       if filename.endswith(file_ext) and target_phrase in filename:
@@ -437,6 +444,7 @@ def combine_pickle(datetime: str, target_phrase: str,
           combined_data.extend(data)
           
           del data
+          
       # Delete the original pickle file if specified
       if remove_path: os.remove(full_path)      
   
@@ -453,8 +461,8 @@ def combine_pickle(datetime: str, target_phrase: str,
           
   
       
-def main(Datetime: str, Duration: int, steps: int, Path: str = '../../../data/supermag/', 
-  save_path: str = '../TWINS/CCA/'):
+def main(Datetime: str, Duration: int, steps: int, Path: str = global_var['path'], 
+  save_path: str = global_var['save_path'], all_calc: bool = True):
     '''
     Store the Correlaion Matrix into a pickle file and give the files the appropriate name
     
@@ -463,32 +471,42 @@ def main(Datetime: str, Duration: int, steps: int, Path: str = '../../../data/su
         Date : Start date for the analysis of the events. Takes the form 'yyyymmdd-hhmm'.
         File_name : Name for storing the Correlation Coefficients into a pickle file once the process has been completed.
         Path: Path to the SuperMag Data location.
-        save_interval: Interval of periodic data dump into the pickle file. Defaults to 3600 seconds (1 hour). 
+        all_calc: Bool value that determines if all the calculations should be done at once (monthly and day long)
+                  or if they should be done individually at the user's discretion.
+        
         
         Returns
         -------
         None.
     
     '''
-    corr_matrix_parallelizer(path = Path, event_datetime = Datetime, Duration = Duration, step = steps)
+    if all_calc == False:
+        corr_matrix_parallelizer(path = Path, event_datetime = Datetime, Duration = Duration, step = steps)
+        
+        if Duration == 28:
+          combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Monthly')
+          
+        else:
+          combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Event')
     
-    if Duration == 28:
-      combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Monthly')
-      
     else:
-      combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Event')
-#    Data = corr_matrix_parallelizer(Path, Date)
-#    File_SavePath = os.path.join(save_path, file_name)
-    
-#    for data in data_generator(Data,10000):
-#
-#      save_data(data, File_SavePath)
+        print('Calculating "Monthly" Analysis...')
+        corr_matrix_parallelizer(path = Path, event_datetime = Datetime, Duration = 28, step = 5)
+        
+        print('Combining "Monthly" Files.')
+        combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Monthly', remove_path = True)
+        
+        print('Calculating "Event" Analysis...')
+        corr_matrix_parallelizer(path = Path, event_datetime = Datetime, Duration = 1, step = 2)
+        
+        print('Combining "Event" Files.')
+        combine_pickle(datetime = Datetime, Duration = Duration, target_phrase = 'Event', remove_path = True)
 
 
 if __name__ == '__main__':
     print('This script is being run as the main program...')
-    main('20120101')
-#    corr_matrix_parallelizer(path = '../data/SuperMag/', start_day = '20120101')
+    main('20120101-0915', all_calc = True)
+
     
 
     
