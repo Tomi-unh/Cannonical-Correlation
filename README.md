@@ -17,11 +17,10 @@ Having the temperautre maps of the magnetotail, it is important to compare the d
   Another for the day surrounding the time of interest (set the Duration to 1). This gets the correlation coefficients.    
   2.) Run the month_analysis function from the NetworkAnalyzer class in the Network_Analysis.py file. This gets the station threshold matrix  
   3.) Run the main function from the NetworkAnalyzer class to get the network diagrams, along with binned degree diagrams and Degree Centrality (Top 3 Stations).
-
-  # Steps:
+  
   Example:
-  main(Datetime = '20150309-0346', Duration = 28, steps = 5) 
-  main(Datetime = '20150309-0346', Duration = 1, steps = 2) 
+  main(Datetime = '20150309-0346', Duration = 28, steps = 5)   
+  main(Datetime = '20150309-0346', Duration = 1, steps = 2)   
   
 
 # Sample Results
