@@ -18,7 +18,7 @@ Having the temperautre maps of the magnetotail, it is important to compare the d
   2.) Run the month_analysis function from the NetworkAnalyzer class in the Network_Analysis.py file. This gets the station threshold matrix  
   3.) Run the main function from the NetworkAnalyzer class to get the network diagrams, along with binned degree diagrams and Degree Centrality (Top 3 Stations).
   
-  Example:
+  Example:  
   main(Datetime = '20150309-0346', Duration = 28, steps = 5)   
   main(Datetime = '20150309-0346', Duration = 1, steps = 2)   
   
