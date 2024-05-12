@@ -21,11 +21,21 @@ import matplotlib.dates as mdates
 import matplotlib.dates as mdate
 import spacepy.pycdf as cdf
 import bisect
+import math 
+
 
 class temp_aggregate():
     def __init__(self, path, extent: tuple = (-30,10,-20,20)):
       self.path = path
       self.extent = extent
+      self.extent_dict = {
+      'Default': self.extent, #default region of the temperature map for averaging
+      'Dawn': (-30, 0, -20, 0), #Selects just the Dawnside pixels in the temperature map for averaging
+      'Dusk': (-30, 0, 0, 20), #Selects the Duskside region of the temperature map for averaging
+      'Geo': (-6.6, 6.6, -6.6, 6.6), #Select geosynchrnous orbit of the temperature map for averaging
+      'PS': (-20, 3, -4, 4), #Selects the approximate Plasma sheet region of the temperature map for averaging.
+      'Lobe': (-30,0,-5,5) #Selects the approximate lobe region of the temperature map for averaging.
+       }
         
 
     def natural_sort_key(self, string):
@@ -46,7 +56,7 @@ class temp_aggregate():
       return parts
 
 
-    def temp_max(self, extent_region: str):
+    def temp_max(self, extent_key: str = 'Default'):
         '''
         Find the maximum temperature value in all the files being plotted and use this max value 
         to normalize all the files into a range [0,1]. The normalized temperature maps are then 
@@ -86,30 +96,15 @@ class temp_aggregate():
             y_range = np.linspace(-40, 40, image_height)
             
             # Create boolean masks for x and y ranges
-            
-            if extent_region == 'Default':
-                x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
-                y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
+            extent_tuple = self.extent_dict[extent_key]
+            if extent_key == 'Lobe':
+                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                y_mask = (y_range <= extent_tuple[2]) | (y_range >= extent_tuple[3])
            
-            elif extent_region == 'Dawn':
-                extent_tuple = (-30,0,-20,0)
+            else:
                 x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
                 y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
            
-            elif extent_region == 'Dusk':
-                extent_tuple = (-30,0,0,20)
-                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
-           
-            elif extent_region == 'Geo':
-                extent_tuple = (-6.6,6.6,-6.6,6.6)
-                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
-            
-            elif extent_region == 'PS':
-                extent_tuple = (-30,0,-5,5)
-                x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])            
             # Apply the masks to the image
             selected_pixels = temperature[y_mask][:, x_mask]
            
@@ -119,7 +114,7 @@ class temp_aggregate():
     
     
         
-    def temp_timeseries(self, data_opt: str = 'mean', extent_region: str ='Default'):
+    def temp_timeseries(self, data_opt: str = 'mean', extent_key: str ='Default'):
         '''
         This function takes in sets of temperature data files and converts to a timeseries.
         This is done by averaging the non zero values of the temperature maps for each timestep,
@@ -153,13 +148,13 @@ class temp_aggregate():
         
         files = sorted(files, key = self.natural_sort_key)
         
-        norm_val = self.temp_max(extent_region) #normalization constant
+        # norm_val = self.temp_max(extent_key) #normalization constant
         
-        print(f'Maximum Temperature Value for is: {norm_val}')
+        # print(f'Maximum Temperature Value for is: {norm_val}')
         
-        if norm_val > 200: norm_val = 200
+        # if norm_val > 200: norm_val = 200
         
-        # norm_val = 1
+        norm_val = 1
         
         time_series = []
         time_val = []
@@ -186,33 +181,23 @@ class temp_aggregate():
                 
                 # Create boolean masks for x and y ranges
                 
-                if extent_region == 'Default':
-                    x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
-                    y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
-               
-                elif extent_region == 'Dawn':
-                    extent_tuple = (-30,0,-20,0)
-                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
-               
-                elif extent_region == 'Dusk':
-                    extent_tuple = (-30,0,0,20)
-                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
-               
-                elif extent_region == 'Geo':
-                    extent_tuple = (-6.6,6.6,-6.6,6.6)
-                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+                extent_tuple = self.extent_dict[extent_key]
                 
-                elif extent_region == 'PS':
-                    extent_tuple = (-30,0,-5,5)
+                if extent_key == 'Lobe':
                     x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])                
+                    y_mask = (y_range <= extent_tuple[2]) | (y_range >= extent_tuple[3])
+               
+                else:
+                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
+                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+               
+               
                 
                 
                 # Apply the masks to the image
                 selected_pixels = temperature[y_mask][:, x_mask]
+                
+                selected_pixels[selected_pixels > 100] = 100 #limit the max value of the pixels
                 
                 norm_temp = selected_pixels/norm_val #normalize the temperature values 
                 
@@ -248,34 +233,20 @@ class temp_aggregate():
                 
                
                 # Create boolean masks for x and y ranges
+                extent_tuple = self.extent_dict[extent_key]
                 
-                if extent_region == 'Default':
-                    x_mask = (x_range >= self.extent[0]) & (x_range <= self.extent[1])
-                    y_mask = (y_range >= self.extent[2]) & (y_range <= self.extent[3])
-               
-                elif extent_region == 'Dawn':
-                    extent_tuple = (-30,0,-20,0)
+                if extent_key == 'Lobe':
                     x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
+                    y_mask = (y_range <= extent_tuple[2]) | (y_range >= extent_tuple[3])
                
-                elif extent_region == 'Dusk':
-                    extent_tuple = (-30,0,0,20)
-                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
-               
-                elif extent_region == 'Geo':
-                    extent_tuple = (-6.6,6.6,-6.6,6.6)
-                    x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
-                    y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
-                
-                elif extent_region == 'PS':
-                    extent_tuple = (-30,0,-5,5)
+                else:
                     x_mask = (x_range >= extent_tuple[0]) & (x_range <= extent_tuple[1])
                     y_mask = (y_range >= extent_tuple[2]) & (y_range <= extent_tuple[3])
                     
                 
                 # Apply the masks to the image
                 selected_pixels = temperature[y_mask][:, x_mask]
+                selected_pixels[selected_pixels > 100] = 100 #limit the max value of the pixels
                 
                 norm_temp = selected_pixels/norm_val
                 
@@ -324,17 +295,19 @@ class temp_aggregate():
             os.makedirs(filepath)
         
         
-        if extent_region == 'Default': extent_region = '' #set extent region to an empty string for default
+        if extent_key == 'Default': extent_key = '' #set extent region to an empty string for default
         
-        filename = f'{date}_{data_opt}_temp_{extent_region}.csv'
-            
+        filename = f'{date}_{data_opt}_temp_{extent_key}.csv'
+        
+  
+        print(f'{extent_key} max value is:' ,np.nanmax(time_series))
         
         temp_df = pd.DataFrame({'Time': time_val, 'Temperature': time_series})
         
         temp_df_filled = temp_df.copy()
         
         # Initialize KNN imputer
-        knn_imputer = KNNImputer(n_neighbors=5)  # You can adjust n_neighbors as needed
+        knn_imputer = KNNImputer(n_neighbors=20)  # You can adjust n_neighbors as needed
         
         # Reshape the 'Temperature' column to a 2D array
         temp_array = temp_df['Temperature'].values.reshape(-1, 1)
@@ -391,10 +364,12 @@ class temp_aggregate():
             for file in tqdm(files, total = len(files), desc = 'Plotting ENA Maps'):          
                 temp_map(os.path.join(self.path,file), filepath) #plot the temperature map using the temp_map function
 
+
+
     
 def network_geomag_plot(date: str,
                         temp_opt: str = 'std',
-                        extent_region: str = 'Default',
+                        extent_key: str = 'Default',
                 network_path: str = '../CCA_Project/Network_plot',
                 temp_path: str = 'D:/TWINS_SAV', 
                 omni_path: str = 'D:/OMNI_FILES'):
@@ -412,7 +387,7 @@ def network_geomag_plot(date: str,
 
     '''
     #Set the string to empty for Default. Makes the plot labelling prettier
-    if extent_region =='Default': extent_region = ''
+    if extent_key =='Default': extent_key = ''
     
     
     event_time = dt.datetime.strptime(date, '%Y%m%d-%H%M')
@@ -420,9 +395,9 @@ def network_geomag_plot(date: str,
     #load the average temperature timeseries and define the start and stop time based on it. 
     
     
-    avg_temp_data = pd.read_csv(os.path.join(network_path,f'{date[:8]}/{date[:8]}_{temp_opt}_temp_{extent_region}.csv'))
+    avg_temp_data = pd.read_csv(os.path.join(network_path,f'{date[:8]}/{date[:8]}_{temp_opt}_temp_{extent_key}.csv'))
     
-    filename = os.path.join(network_path,f'{date[:8]}/{date[:8]}_{temp_opt}_plot_{extent_region}.png')
+    filename = os.path.join(network_path,f'{date[:8]}/{date[:8]}_{temp_opt}_plot_{extent_key}.png')
 
         
         
@@ -471,13 +446,15 @@ def network_geomag_plot(date: str,
     omni_ind = bisect.bisect(omni_epoch, event_time)
     
     
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(15, 15), sharex = True)
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(15, 15), sharex = True)
     
     ax1.plot(tot_con_data['Time'].iloc[tot_start: tot_stop], 
              tot_con_data['Total Connection'].iloc[tot_start: tot_stop], 
              color = 'b', label = 'Total Connection')
-    ax1.set_ylabel('Total Connection', fontsize = 10, fontweight = 'bold')
+    ax1.set_ylabel('Total Connection', fontsize = 20, fontweight = 'bold')
     ax1.axvline( x = tot_con_data['Time'].iloc[tot_ind-1], color = 'k')
+    ax1.tick_params(axis='y', colors='blue')
+    ax1.yaxis.label.set_color('blue')
     ax1.margins(x=0)
     ax1.grid()
 
@@ -485,25 +462,27 @@ def network_geomag_plot(date: str,
     ax5 = ax1.twinx()
     ax5.plot(avg_temp_data['Time'], avg_temp_data['Temperature'], 
              color = 'r', marker = 'o', label = 'Average Temperature ')
-    ax5.set_ylabel(f'{extent_region} Average Temperature [kev]', fontsize = 10, fontweight = 'bold')
+    ax5.set_ylabel(f'{extent_key} Average Temperature [kev]', fontsize = 20, fontweight = 'bold')
     ax5.tick_params(axis='y', colors='red')
     ax5.yaxis.label.set_color('red')
     
     
     ax2.plot(omni_epoch[omni_start:omni_stop], Bz_data[omni_start:omni_stop],
-             color = 'r')
-    ax2.set_ylabel('Bz GSM [nT]',  fontsize = 10, fontweight = 'bold')
+             color = 'blue')
+    ax2.set_ylabel('Bz GSM [nT]',  fontsize = 20, fontweight = 'bold')
     ax2.axvline( x = omni_epoch[omni_ind], color = 'k')
     ax2.axhline(y = 0, color = 'k', linestyle = '--')
+    ax2.tick_params(axis='y', colors='blue')
+    ax2.yaxis.label.set_color('blue')
     ax2.margins(x=0)
     ax2.grid()
         
     ax6 = ax2.twinx()
     ax6.plot(omni_epoch[omni_start:omni_stop], symh_data[omni_start:omni_stop],
-             color = 'b')
-    ax6.set_ylabel('Sym-H [nT]',fontsize = 10, fontweight = 'bold')
-    ax6.tick_params(axis='y', colors='blue')
-    ax6.yaxis.label.set_color('blue')
+             color = 'r')
+    ax6.set_ylabel('Sym-H [nT]',fontsize = 20, fontweight = 'bold')
+    ax6.tick_params(axis='y', colors='red')
+    ax6.yaxis.label.set_color('red')
     
     
     
@@ -517,34 +496,34 @@ def network_geomag_plot(date: str,
     ax3.plot(omni_epoch[omni_start:omni_stop]
              ,AU_data[omni_start:omni_stop], 
              color = 'g', label = 'AU Index')
-    ax3.set_ylabel('Geomagnetic Indices [nT]', fontsize = 10, fontweight = 'bold')
+    ax3.set_ylabel('Geomagnetic Indices [nT]', fontsize = 20, fontweight = 'bold')
     ax3.axvline( x = omni_epoch[omni_ind], color = 'k')
     ax3.margins(x=0)
     ax3.legend()
     ax3.grid()
     
     
-    ax4.plot(db_data['Date_UTC'].iloc[db_start : db_stop],
-             db_data['mid'].iloc[db_start : db_stop], 
-             color = 'b', label = 'Mid Lat.')
-    ax4.plot(db_data['Date_UTC'].iloc[db_start : db_stop],
-             db_data['high'].iloc[db_start : db_stop], 
-             color = 'r', label = 'High Lat.')
-    ax4.set_ylabel('db/dt', fontsize = 10, fontweight = 'bold')
-    ax4.set_xlabel('Time UT HH:MM', fontsize = 10, fontweight = 'bold')
-    ax4.axvline( x = db_data['Date_UTC'].iloc[db_ind], color = 'k')
-    ax4.margins(x=0)
-    ax4.legend()
-    ax4.grid()
+    # ax4.plot(db_data['Date_UTC'].iloc[db_start : db_stop],
+    #          db_data['mid'].iloc[db_start : db_stop], 
+    #          color = 'b', label = 'Mid Lat.')
+    # ax4.plot(db_data['Date_UTC'].iloc[db_start : db_stop],
+    #          db_data['high'].iloc[db_start : db_stop], 
+    #          color = 'r', label = 'High Lat.')
+    # ax4.set_ylabel('db/dt', fontsize = 10, fontweight = 'bold')
+    ax3.set_xlabel('Time UT HH:MM', fontsize = 20, fontweight = 'bold')
+    # ax4.axvline( x = db_data['Date_UTC'].iloc[db_ind], color = 'k')
+    # ax4.margins(x=0)
+    # ax4.legend()
+    # ax4.grid()
     
-    for ax in [ax1, ax2, ax3, ax4]:
+    for ax in [ax1, ax2, ax3]:
         ax.minorticks_on()
         ax.xaxis.set_minor_locator(mdate.HourLocator(interval=1)) 
         ax.tick_params(axis='x',direction='in')
     
     dateformat = '%H:%M' #format of the time axis tick labels, with seconds being ignored
     date_formatter = mdate.DateFormatter(dateformat)
-    ax4.xaxis.set_major_formatter(date_formatter)
+    ax3.xaxis.set_major_formatter(date_formatter)
     
     fig.align_ylabels()
     fig.subplots_adjust(hspace=0)
@@ -555,7 +534,7 @@ def network_geomag_plot(date: str,
 
 if __name__ == '__main__':
     
-    date = '20150528-0245'
+    date = '20150609-0200'
     
     path = f'D:/TWINS_SAV/{date[:8]}'
     
@@ -563,13 +542,13 @@ if __name__ == '__main__':
     
     temp_agg.plot_temp()
     
-    arg = ['Default', 'Dusk', 'Dawn', 'Geo', 'PS']
+    arg = ['Default', 'Dusk', 'Dawn', 'Geo', 'PS', 'Lobe']
     
     for elem in arg:
         
-        temp_agg.temp_timeseries(extent_region = elem)
+        temp_agg.temp_timeseries(extent_key = elem)
         
-        network_geomag_plot(date, temp_opt = 'mean', extent_region = elem)
+        network_geomag_plot(date, temp_opt = 'mean', extent_key = elem)
         
         
         

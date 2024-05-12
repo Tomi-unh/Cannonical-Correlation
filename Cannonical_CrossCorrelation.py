@@ -40,7 +40,7 @@ import bisect
 from tqdm import tqdm 
 from multiprocessing import Pool
 
-json_filename = "global_variables_CCA.json"
+json_filename = "CCA_variables.json"
 
 
 #Get the global variables. This .json file only contains the path strings as

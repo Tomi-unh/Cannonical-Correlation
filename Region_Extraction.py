@@ -61,6 +61,10 @@ def extract_features(image_data: np.ndarray, threshold: int = 3, min_size: int =
 
 def pieslice(img_data,angle_steps: int = 8, center_x: int = 120, center_y: int = 80):
     '''
+    This function takes in a temperature ENA image and divides thems into pie slices based on the 
+    numbers of slices desired. The output of the function is an array of the mean different sections of the 
+    ENA temperature map generated and the different sections themselves, respectively.
+    
     Parameters:
     -----------
     img_data : ndarray
